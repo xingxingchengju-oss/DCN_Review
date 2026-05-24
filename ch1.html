@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch1 引论 | DCN Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle" title="切换深浅色 Toggle theme">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>本章目录 Sections</h3>
+    <ul>
+      <li><a href="#encoding">1. Digital Encoding 数字编码</a></li>
+      <li><a href="#4b5b">2. 4B/5B Conversion</a></li>
+      <li><a href="#modulation">3. AM / FM / PM 调制</a></li>
+      <li><a href="#nyquist">4. Nyquist Theorem</a></li>
+      <li><a href="#shannon">5. Shannon &amp; SNR</a></li>
+      <li><a href="#layering">6. Protocol Hierarchy 分层</a></li>
+      <li><a href="#topology">7. Network Topologies 拓扑</a></li>
+      <li><a href="#quiz">🎯 自测题 Quiz</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <h1>Chapter 1 — Introduction</h1>
+    <p class="subtitle">引论：信号编码、信道容量、协议分层与网络拓扑</p>
+
+    <!-- ============================================================
+         1. Digital Encoding
+         ============================================================ -->
+    <section id="encoding">
+      <h2>1. Digital Encoding <span class="cn">数字编码 (p16–17)</span></h2>
+      <p>用<span class="term">数字信号 (digital signal)</span> 传送<span class="term">数字数据 (digital data)</span>，需要把比特序列映射为电平变化。常见编码方案：</p>
+
+      <table>
+        <thead>
+          <tr><th>编码 Scheme</th><th>规则 Rule</th><th>优点 Pros</th><th>缺点 Cons</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>NRZ-L</strong><br>Non-Return-to-Zero Level</td>
+            <td>0 = 高电平, 1 = 低电平（或反之）</td>
+            <td>简单，带宽低</td>
+            <td>长串相同比特无跳变 → <strong>无法同步</strong>；有直流分量</td>
+          </tr>
+          <tr>
+            <td><strong>NRZ-I</strong><br>NRZ-Invert</td>
+            <td>遇 <strong>1 跳变</strong>，遇 <strong>0 保持</strong></td>
+            <td>差分编码，抗极性反转</td>
+            <td>长串 0 仍无跳变</td>
+          </tr>
+          <tr>
+            <td><strong>Manchester</strong><br>曼彻斯特</td>
+            <td>每位中间必有跳变：<br>0 = 高→低；1 = 低→高（IEEE 802.3 标准）</td>
+            <td><strong>自带时钟</strong>，无直流分量</td>
+            <td>带宽是 NRZ 的 2 倍</td>
+          </tr>
+          <tr>
+            <td><strong>Diff Manchester</strong><br>差分曼彻斯特</td>
+            <td>位中间必跳变（用作时钟）；位<strong>开始</strong>处：0 跳变, 1 不跳变</td>
+            <td>抗极性反转 + 自带时钟</td>
+            <td>电路稍复杂</td>
+          </tr>
+          <tr>
+            <td><strong>AMI</strong><br>Bipolar (双极)</td>
+            <td>0 = 0V；1 交替用 +V / −V</td>
+            <td>无直流分量；连 1 可同步</td>
+            <td>连 0 时无跳变</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <svg class="diagram" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg">
+        <text x="10" y="20" font-weight="bold">Bits: 1 0 1 1 0 0 1 0</text>
+        <!-- Grid -->
+        <g class="grid">
+          <line x1="60" y1="40" x2="60" y2="200"/>
+          <line x1="130" y1="40" x2="130" y2="200"/>
+          <line x1="200" y1="40" x2="200" y2="200"/>
+          <line x1="270" y1="40" x2="270" y2="200"/>
+          <line x1="340" y1="40" x2="340" y2="200"/>
+          <line x1="410" y1="40" x2="410" y2="200"/>
+          <line x1="480" y1="40" x2="480" y2="200"/>
+          <line x1="550" y1="40" x2="550" y2="200"/>
+        </g>
+        <!-- NRZ-L -->
+        <text x="10" y="55">NRZ-L</text>
+        <polyline class="signal" points="60,40 130,40 130,80 200,80 200,40 270,40 340,40 340,80 410,80 480,80 480,40 550,40 620,40 620,80"/>
+        <!-- Manchester -->
+        <text x="10" y="115">Manch</text>
+        <polyline class="signal-alt" points="60,120 95,120 95,100 130,100 130,120 165,120 165,100 200,100 200,120 235,120 235,100 270,100 270,120 305,120 305,100 340,100 340,120 375,120 375,100 410,100 410,120 445,120 445,100 480,100 480,120 515,120 515,100 550,100 550,120 585,120 585,100 620,100"/>
+        <!-- AMI -->
+        <text x="10" y="175">AMI</text>
+        <line class="axis" x1="60" y1="170" x2="620" y2="170"/>
+        <polyline class="signal" points="60,170 60,150 130,150 130,170 200,170 200,190 270,190 270,150 340,150 340,170 410,170 480,170 480,190 550,190 550,170 620,170"/>
+      </svg>
+
+      <div class="exam-key">
+        <p><strong>必记：</strong>Manchester 编码每位中间一定有跳变 → <strong>自同步</strong>（self-clocking），所以以太网选它。</p>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 为什么需要"自同步"编码？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>接收端不知道发送端的时钟频率精确值，如果信号长时间不跳变（比如长串的 0），接收端就会"失同步"，无法判断每一位的边界。Manchester 编码强制每个比特中间有一次跳变，让接收端可以从信号本身恢复时钟，避免失同步问题。</p>
+          <p>代价是<strong>带宽翻倍</strong>——同样发送 1 bit 数据，Manchester 在线路上的信号变化次数是 NRZ 的 2 倍。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         2. 4B/5B
+         ============================================================ -->
+    <section id="4b5b">
+      <h2>2. 4B/5B Conversion <span class="cn">4B/5B 编码 (p18)</span></h2>
+      <p>把每 <strong>4 个数据位</strong> 映射为 <strong>5 个传输位</strong>，保证传输码中至少有 2 个 1（不会长时间无跳变），常用于 100Base-T 等。映射表如下：</p>
+
+      <table>
+        <thead><tr><th>Data (4B)</th><th>Code (5B)</th><th>Data (4B)</th><th>Code (5B)</th></tr></thead>
+        <tbody>
+          <tr><td>0000</td><td>11110</td><td>1000</td><td>10010</td></tr>
+          <tr><td>0001</td><td>01001</td><td>1001</td><td>10011</td></tr>
+          <tr><td>0010</td><td>10100</td><td>1010</td><td>10110</td></tr>
+          <tr><td>0011</td><td>10101</td><td>1011</td><td>10111</td></tr>
+          <tr><td>0100</td><td>01010</td><td>1100</td><td>11010</td></tr>
+          <tr><td>0101</td><td>01011</td><td>1101</td><td>11011</td></tr>
+          <tr><td>0110</td><td>01110</td><td>1110</td><td>11100</td></tr>
+          <tr><td>0111</td><td>01111</td><td>1111</td><td>11101</td></tr>
+        </tbody>
+      </table>
+
+      <div class="exam-key">
+        <p>16 个 4-bit 模式只用了 2⁵=32 个 5-bit 模式中的 16 个；其余用作<strong>控制符</strong>（IDLE、Start/End delimiter 等）。</p>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 为什么不直接用 NRZ-I 而要套 4B/5B？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>NRZ-I 遇 1 跳变、遇 0 保持。如果原始数据出现 <code>00000000</code>，NRZ-I 信号会保持不变 → 失同步。</p>
+          <p>4B/5B 编码后，<strong>每 5 个码位至少包含 2 个 1</strong>，最大连续 0 个数被限制（不超过 3），保证再用 NRZ-I 发送时也能维持同步。</p>
+          <p>组合：<strong>原始数据 → 4B/5B 编码 → NRZ-I → 介质</strong>，是 100Mbps Fast Ethernet 的物理层方案。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         3. AM / FM / PM
+         ============================================================ -->
+    <section id="modulation">
+      <h2>3. AM / FM / PM <span class="cn">模拟调制 (p19–21)</span></h2>
+      <p>用<span class="term">模拟信号 (analog signal)</span> 传送数据时，要把信息"装载"到载波 (carrier wave) 上。载波 <code>c(t) = A·cos(2π·f·t + φ)</code> 有三个可改变的参数：振幅 A、频率 f、相位 φ。</p>
+
+      <div class="compare">
+        <div>
+          <h4>AM — Amplitude Modulation 振幅调制</h4>
+          <p>改变载波的<strong>振幅 A</strong>，频率和相位不变。</p>
+          <div class="formula">s(t) = [A + m(t)] · cos(2π·f<sub>c</sub>·t)</div>
+          <p><em>应用：</em>调幅广播（AM 收音机）</p>
+        </div>
+        <div>
+          <h4>FM — Frequency Modulation 频率调制</h4>
+          <p>改变载波的<strong>频率 f</strong>，振幅和相位不变。</p>
+          <div class="formula">s(t) = A · cos[2π·(f<sub>c</sub> + k·m(t))·t]</div>
+          <p><em>应用：</em>调频广播（FM 收音机），抗干扰强</p>
+        </div>
+      </div>
+
+      <div class="compare">
+        <div>
+          <h4>PM — Phase Modulation 相位调制</h4>
+          <p>改变载波的<strong>相位 φ</strong>，振幅和频率不变。</p>
+          <div class="formula">s(t) = A · cos[2π·f<sub>c</sub>·t + k·m(t)]</div>
+          <p><em>应用：</em>数字调制 PSK 的基础</p>
+        </div>
+        <div>
+          <h4>对比小结 Summary</h4>
+          <table style="margin:0">
+            <tr><th>项 Aspect</th><th>AM</th><th>FM</th><th>PM</th></tr>
+            <tr><td>抗噪声</td><td>差</td><td>好</td><td>好</td></tr>
+            <tr><td>带宽需求</td><td>窄</td><td>宽</td><td>宽</td></tr>
+            <tr><td>电路复杂度</td><td>简单</td><td>较复杂</td><td>复杂</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="exam-key">
+        <p>记忆口诀：<strong>振幅—频率—相位</strong>，分别对应 <strong>A — f — φ</strong>。数字版分别叫 <strong>ASK / FSK / PSK</strong>。</p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         4. Nyquist
+         ============================================================ -->
+    <section id="nyquist">
+      <h2>4. Nyquist Theorem <span class="cn">奈奎斯特定理 (p23–24)</span></h2>
+      <p><strong>无噪声</strong>信道的最大数据率 (channel capacity)：</p>
+
+      <div class="formula">
+        <span class="formula-label">Nyquist (Noiseless)</span>
+        C = 2 · B · log<sub>2</sub>(V)  &nbsp; (bit/s)
+      </div>
+
+      <ul>
+        <li><strong>C</strong> = 信道容量 channel capacity (bps)</li>
+        <li><strong>B</strong> = 带宽 bandwidth (Hz)</li>
+        <li><strong>V</strong> = 信号电平数 number of signal levels（即每符号承载 log₂V 个 bit）</li>
+      </ul>
+
+      <div class="exam-key">
+        <p><strong>关键直觉：</strong>带宽越宽 → 单位时间可发的符号越多；电平数越多 → 每个符号能编码的 bit 越多。</p>
+      </div>
+
+      <details class="example" open>
+        <summary>例题 Example 1：B = 3 kHz, V = 8，求最大数据率</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">Step 1.</span> 列公式 C = 2 · B · log₂(V)
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2.</span> 代入：C = 2 × 3000 × log₂(8) = 2 × 3000 × 3
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3.</span> <strong>C = 18 000 bps = 18 kbps</strong>
+          </div>
+        </div>
+      </details>
+
+      <details class="example">
+        <summary>例题 Example 2：电话线 B=4kHz, 4 电平，求最大数据率</summary>
+        <div>
+          <div class="step"><span class="step-label">Solution:</span> C = 2 × 4000 × log₂(4) = 8000 × 2 = <strong>16 000 bps</strong></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         5. Shannon
+         ============================================================ -->
+    <section id="shannon">
+      <h2>5. Shannon's Theorem &amp; SNR <span class="cn">香农定理与信噪比 (p25)</span></h2>
+      <p><strong>有噪声</strong>信道的最大数据率：</p>
+
+      <div class="formula">
+        <span class="formula-label">Shannon (Noisy)</span>
+        C = B · log<sub>2</sub>(1 + S/N)  &nbsp; (bit/s)
+      </div>
+
+      <ul>
+        <li><strong>S/N</strong> = 信号功率 / 噪声功率（线性比，<u>不</u>是 dB）</li>
+        <li><strong>SNR<sub>dB</sub></strong> = 10 · log<sub>10</sub>(S/N)，所以反向 <strong>S/N = 10<sup>SNR<sub>dB</sub>/10</sup></strong></li>
+      </ul>
+
+      <div class="formula">
+        SNR<sub>dB</sub> = 10 · log<sub>10</sub>(S/N) &nbsp;&nbsp;⇔&nbsp;&nbsp; S/N = 10<sup>SNR<sub>dB</sub>/10</sup>
+      </div>
+
+      <div class="exam-key">
+        <p><strong>常考陷阱：</strong>题目给的是 SNR 的 <strong>dB 值</strong>时，必须先换算回线性比 S/N 再代入！</p>
+      </div>
+
+      <details class="example" open>
+        <summary>例题 Example 1：B = 4 kHz, SNR = 30 dB，求最大数据率</summary>
+        <div>
+          <div class="step"><span class="step-label">Step 1.</span> 把 dB 换算：S/N = 10^(30/10) = 10³ = 1000</div>
+          <div class="step"><span class="step-label">Step 2.</span> 代入：C = 4000 × log₂(1 + 1000) ≈ 4000 × log₂(1001)</div>
+          <div class="step"><span class="step-label">Step 3.</span> log₂(1024) = 10，所以 log₂(1001) ≈ 9.97</div>
+          <div class="step"><span class="step-label">Step 4.</span> <strong>C ≈ 4000 × 9.97 ≈ 39 880 bps ≈ 40 kbps</strong></div>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 Nyquist 与 Shannon 怎么联用？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>Nyquist 给出<strong>无噪声情况下的上限</strong>（和你选用几电平有关）。Shannon 给出<strong>有噪声情况下的绝对上限</strong>（和电平数无关，只和带宽 + SNR 有关）。</p>
+          <p>实际工程中，C_max = min(C<sub>Nyquist</sub>, C<sub>Shannon</sub>)。即两个上限同时成立，取较小者。</p>
+          <p>题目通常分开问；如果两个都给，先算两个再取最小。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         6. Layering
+         ============================================================ -->
+    <section id="layering">
+      <h2>6. Protocol Hierarchy <span class="cn">协议分层 (p42–44)</span></h2>
+
+      <h3>三大要素 Three Elements</h3>
+      <table>
+        <tr><th>术语</th><th>定义</th></tr>
+        <tr><td><strong>Layer</strong> 层</td><td>把网络功能划分为一组独立的、有序的"层"</td></tr>
+        <tr><td><strong>Protocol</strong> 协议</td><td>同一层在两台机器之间通信遵循的规则集</td></tr>
+        <tr><td><strong>Interface</strong> 接口</td><td>同一台机器上相邻两层之间通过接口交换数据 (SAP)</td></tr>
+      </table>
+
+      <h3>OSI 7 层 vs TCP/IP 4 层</h3>
+      <table>
+        <thead><tr><th>#</th><th>OSI 模型</th><th>TCP/IP 模型</th><th>典型协议</th></tr></thead>
+        <tbody>
+          <tr><td>7</td><td>Application 应用层</td><td rowspan="3" style="background:var(--cn-bg)">Application</td><td>HTTP, FTP, DNS, SMTP</td></tr>
+          <tr><td>6</td><td>Presentation 表示层</td><td>SSL/TLS, JPEG, ASCII</td></tr>
+          <tr><td>5</td><td>Session 会话层</td><td>NetBIOS, RPC</td></tr>
+          <tr><td>4</td><td>Transport 传输层</td><td>Transport</td><td>TCP, UDP</td></tr>
+          <tr><td>3</td><td>Network 网络层</td><td>Internet</td><td>IP, ICMP, ARP</td></tr>
+          <tr><td>2</td><td>Data Link 数据链路层</td><td rowspan="2" style="background:var(--cn-bg)">Network Access</td><td>Ethernet, PPP, 802.11</td></tr>
+          <tr><td>1</td><td>Physical 物理层</td><td>电缆、光纤、无线电</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Why Layering? <span class="cn">为什么分层？</span></h3>
+      <div class="exam-key double">
+        <ul>
+          <li><strong>Modularity 模块化</strong>：每层只关心自己的任务，对外暴露简单接口</li>
+          <li><strong>Hide complexity 隐藏复杂度</strong>：应用层不必懂物理层细节</li>
+          <li><strong>Easy to modify / replace 易于修改</strong>：换一种物理介质，上层无感知（如以太网换光纤）</li>
+          <li><strong>Standardization 标准化</strong>：不同厂商的设备可在层接口上互操作</li>
+          <li><strong>Easier debugging 易于调试</strong>：故障可定位到具体层</li>
+        </ul>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 数据如何在分层中"打包/解包"？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>发送方<strong>从上到下封装 (encapsulation)</strong>：每层在数据前加自己的 header（链路层还可能加 trailer）。</p>
+          <p>接收方<strong>从下到上解封 (decapsulation)</strong>：每层剥掉自己的 header，把 payload 交给上一层。</p>
+          <p>这就是为什么以太网帧的 payload 里又能装一个 IP 包，IP 包里又能装一个 TCP 段——一个层一个信封。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         7. Topology
+         ============================================================ -->
+    <section id="topology">
+      <h2>7. Network Topologies <span class="cn">网络拓扑 (p62–71)</span></h2>
+
+      <div class="exam-key double">
+        <p>教师特别提示：可能考"<strong>什么情况下用什么拓扑</strong>"——务必记住每种拓扑的适用场景。</p>
+      </div>
+
+      <svg class="diagram" viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Bus -->
+        <text x="50" y="20" text-anchor="middle" font-weight="bold">Bus 总线</text>
+        <line class="edge" x1="10" y1="60" x2="100" y2="60" stroke-width="3"/>
+        <circle class="node" cx="20" cy="60" r="6"/><circle class="node" cx="40" cy="60" r="6"/>
+        <circle class="node" cx="60" cy="60" r="6"/><circle class="node" cx="80" cy="60" r="6"/>
+        <!-- Star -->
+        <text x="180" y="20" text-anchor="middle" font-weight="bold">Star 星形</text>
+        <line class="edge" x1="180" y1="60" x2="150" y2="30"/>
+        <line class="edge" x1="180" y1="60" x2="210" y2="30"/>
+        <line class="edge" x1="180" y1="60" x2="150" y2="90"/>
+        <line class="edge" x1="180" y1="60" x2="210" y2="90"/>
+        <circle class="node" cx="180" cy="60" r="9" fill="#f59e0b"/>
+        <circle class="node" cx="150" cy="30" r="6"/><circle class="node" cx="210" cy="30" r="6"/>
+        <circle class="node" cx="150" cy="90" r="6"/><circle class="node" cx="210" cy="90" r="6"/>
+        <!-- Ring -->
+        <text x="310" y="20" text-anchor="middle" font-weight="bold">Ring 环形</text>
+        <circle cx="310" cy="60" r="35" class="edge" fill="none"/>
+        <circle class="node" cx="310" cy="25" r="6"/><circle class="node" cx="345" cy="60" r="6"/>
+        <circle class="node" cx="310" cy="95" r="6"/><circle class="node" cx="275" cy="60" r="6"/>
+        <!-- Mesh -->
+        <text x="450" y="20" text-anchor="middle" font-weight="bold">Mesh 网状</text>
+        <line class="edge" x1="420" y1="30" x2="480" y2="30"/>
+        <line class="edge" x1="420" y1="30" x2="420" y2="90"/>
+        <line class="edge" x1="420" y1="30" x2="480" y2="90"/>
+        <line class="edge" x1="480" y1="30" x2="420" y2="90"/>
+        <line class="edge" x1="480" y1="30" x2="480" y2="90"/>
+        <line class="edge" x1="420" y1="90" x2="480" y2="90"/>
+        <circle class="node" cx="420" cy="30" r="6"/><circle class="node" cx="480" cy="30" r="6"/>
+        <circle class="node" cx="420" cy="90" r="6"/><circle class="node" cx="480" cy="90" r="6"/>
+        <!-- Tree -->
+        <text x="600" y="20" text-anchor="middle" font-weight="bold">Tree 树形</text>
+        <line class="edge" x1="600" y1="30" x2="570" y2="60"/>
+        <line class="edge" x1="600" y1="30" x2="630" y2="60"/>
+        <line class="edge" x1="570" y1="60" x2="555" y2="90"/>
+        <line class="edge" x1="570" y1="60" x2="585" y2="90"/>
+        <line class="edge" x1="630" y1="60" x2="615" y2="90"/>
+        <line class="edge" x1="630" y1="60" x2="645" y2="90"/>
+        <circle class="node" cx="600" cy="30" r="7" fill="#f59e0b"/>
+        <circle class="node" cx="570" cy="60" r="6"/><circle class="node" cx="630" cy="60" r="6"/>
+        <circle class="node" cx="555" cy="90" r="5"/><circle class="node" cx="585" cy="90" r="5"/>
+        <circle class="node" cx="615" cy="90" r="5"/><circle class="node" cx="645" cy="90" r="5"/>
+      </svg>
+
+      <table>
+        <thead>
+          <tr><th>拓扑</th><th>优点 Pros</th><th>缺点 Cons</th><th>适用场景 Use Case</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Bus 总线</strong></td>
+            <td>布线少、便宜、易扩展</td>
+            <td>主线一断全网瘫；冲突多</td>
+            <td>早期小型 LAN；现在很少用</td>
+          </tr>
+          <tr>
+            <td><strong>Star 星形</strong></td>
+            <td>中心控制易管理；单节点故障不影响他人</td>
+            <td>中心 hub/switch 是单点故障；电缆多</td>
+            <td><span class="hl">现代以太网 LAN</span>（家庭/办公室主流）</td>
+          </tr>
+          <tr>
+            <td><strong>Ring 环形</strong></td>
+            <td>无冲突（令牌环）；公平访问</td>
+            <td>任一节点/链路故障影响整环；增/删节点麻烦</td>
+            <td>令牌环 (Token Ring)、FDDI；工业控制网络</td>
+          </tr>
+          <tr>
+            <td><strong>Mesh 网状</strong></td>
+            <td>高<strong>可靠性</strong>，多路径，无单点故障</td>
+            <td>布线极多 (N(N−1)/2)；成本高</td>
+            <td><span class="hl">骨干网 (backbone)、军事/关键系统</span></td>
+          </tr>
+          <tr>
+            <td><strong>Tree 树形</strong></td>
+            <td>层次清晰，便于分段管理</td>
+            <td>根节点故障影响子树</td>
+            <td>大型园区网、CATV 有线电视网</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>决策表 Decision Table</h3>
+      <table>
+        <thead><tr><th>需求 Requirement</th><th>推荐拓扑</th></tr></thead>
+        <tbody>
+          <tr><td>家庭 / 小办公室普通联网</td><td><strong>Star</strong>（用交换机）</td></tr>
+          <tr><td>高可靠性、容错（军事、骨干）</td><td><strong>Mesh</strong>（全连接或部分连接）</td></tr>
+          <tr><td>预算极低、小规模</td><td><strong>Bus</strong>（已过时但便宜）</td></tr>
+          <tr><td>大型园区按楼分段管理</td><td><strong>Tree</strong></td></tr>
+          <tr><td>需要无冲突公平访问</td><td><strong>Ring</strong>（令牌）</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Network Categories <span class="cn">网络分类</span></h3>
+      <table>
+        <thead><tr><th>类型</th><th>覆盖范围 Coverage</th><th>典型例子</th></tr></thead>
+        <tbody>
+          <tr><td><strong>PAN</strong> Personal Area Network</td><td>1–10 m</td><td>Bluetooth, USB</td></tr>
+          <tr><td><strong>LAN</strong> Local Area Network</td><td>10 m – 1 km</td><td>家庭/办公室以太网, Wi-Fi</td></tr>
+          <tr><td><strong>MAN</strong> Metropolitan Area Network</td><td>1–100 km</td><td>城域光纤网, WiMAX</td></tr>
+          <tr><td><strong>WAN</strong> Wide Area Network</td><td>&gt; 100 km</td><td>Internet, 运营商骨干网</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         Quiz
+         ============================================================ -->
+    <section id="quiz" class="quiz-section">
+      <h2>🎯 Self-Test <span class="cn">章末自测 (6 题)</span></h2>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q1.</span> 下列哪种编码<strong>自带时钟</strong>，每位中间必有跳变？</p>
+        <ul class="q-options">
+          <li>A. NRZ-L</li>
+          <li>B. NRZ-I</li>
+          <li>C. Manchester</li>
+          <li>D. AMI</li>
+        </ul>
+        <div class="q-actions">
+          <button class="btn-submit">Submit</button>
+          <button class="btn-explain secondary">解析 Explain</button>
+        </div>
+        <div class="q-explain" style="display:none">
+          <strong>答案 C.</strong> Manchester 编码每位中间有跳变（0=高→低、1=低→高），接收端可从信号本身恢复时钟，故称为自同步。NRZ 系列长串相同位时无跳变；AMI 长串 0 时无跳变。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="blank" data-answer="36000|36 000|36kbps|36000bps">
+        <p class="q-stem"><span class="q-num">Q2.</span> 用 Nyquist 公式：带宽 B = 6 kHz，电平数 V = 8，求最大数据率（bps）。</p>
+        <div class="q-blank">C = <input type="text" placeholder="数值"> bps</div>
+        <div class="q-actions">
+          <button class="btn-submit">Submit</button>
+          <button class="btn-explain secondary">解析</button>
+        </div>
+        <p class="q-feedback" style="display:none"></p>
+        <div class="q-explain" style="display:none">
+          C = 2·B·log₂(V) = 2 × 6000 × log₂(8) = 2 × 6000 × 3 = <strong>36 000 bps</strong>
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="blank" data-answer="20000|20 000|20kbps">
+        <p class="q-stem"><span class="q-num">Q3.</span> 用 Shannon 公式：B = 2 kHz, SNR = 30 dB，求理论最大数据率（bps，取整数）。</p>
+        <div class="q-blank">C ≈ <input type="text" placeholder="数值"> bps</div>
+        <div class="q-actions">
+          <button class="btn-submit">Submit</button>
+          <button class="btn-explain secondary">解析</button>
+        </div>
+        <p class="q-feedback" style="display:none"></p>
+        <div class="q-explain" style="display:none">
+          先把 dB 换线性：S/N = 10^(30/10) = 1000。<br>
+          C = B · log₂(1 + S/N) = 2000 × log₂(1001) ≈ 2000 × 9.97 ≈ <strong>19 940 ≈ 20 000 bps</strong>
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q4.</span> 在 4B/5B 编码中，4-bit 数据 <code>0000</code> 被映射为：</p>
+        <ul class="q-options">
+          <li>A. 00000</li>
+          <li>B. 11110</li>
+          <li>C. 01010</li>
+          <li>D. 10101</li>
+        </ul>
+        <div class="q-actions">
+          <button class="btn-submit">Submit</button>
+          <button class="btn-explain secondary">解析</button>
+        </div>
+        <div class="q-explain" style="display:none">
+          <strong>答案 B.</strong> 0000 → 11110（见映射表）。注意 4B/5B 不允许码字本身有过多连 0，所以 0000 这种全 0 数据必须映射成含若干 1 的码字。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q5.</span> 一家公司要在多栋楼之间组建可靠网络，<strong>对容错要求极高</strong>（任一链路失效都不能整网失联），最适合的拓扑是？</p>
+        <ul class="q-options">
+          <li>A. Bus</li>
+          <li>B. Star</li>
+          <li>C. Mesh</li>
+          <li>D. Ring</li>
+        </ul>
+        <div class="q-actions">
+          <button class="btn-submit">Submit</button>
+          <button class="btn-explain secondary">解析</button>
+        </div>
+        <div class="q-explain" style="display:none">
+          <strong>答案 C. Mesh.</strong> 网状拓扑提供多条冗余路径，任意一条链路或节点失效都不影响其它节点通信。Star 受限于中心 hub 的单点故障；Bus 主线一断全瘫；Ring 任一节点故障影响整环（除非用双环）。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="open">
+        <p class="q-stem"><span class="q-num">Q6.</span> 简答：列举至少 <strong>3 个</strong>"为什么要分层"的理由。</p>
+        <div class="q-actions">
+          <button class="btn-explain secondary">查看参考答案 Reference</button>
+        </div>
+        <div class="q-explain" style="display:none">
+          参考答案（任答 3 个即可）：
+          <ol>
+            <li><strong>Modularity 模块化</strong>：每层职责单一，便于设计与维护</li>
+            <li><strong>Hides complexity 隐藏复杂度</strong>：上层不必关心下层实现细节</li>
+            <li><strong>Easy to replace 易替换</strong>：换一种物理介质或链路协议，上层无需修改</li>
+            <li><strong>Standardization 标准化</strong>：层间接口统一，不同厂商设备可互操作</li>
+            <li><strong>Easier debugging 易调试</strong>：故障可定位到具体层</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <footer>Chapter 1 完 · 下一章 <a href="ch2.html">Ch2 物理层 →</a></footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>

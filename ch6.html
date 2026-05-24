@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch6 以太网与无线 | DCN Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>本章目录</h3>
+    <ul>
+      <li><a href="#why-min">1. 为什么要最小帧长 ⭐⭐</a></li>
+      <li><a href="#formula">2. 最小帧长公式 ⭐⭐</a></li>
+      <li><a href="#backoff">3. 二进制指数退避 ⭐⭐</a></li>
+      <li><a href="#wlan">4. WLAN &amp; CSMA/CA ⭐⭐</a></li>
+      <li><a href="#quiz">🎯 自测题 Quiz</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <h1>Chapter 6 — Ethernet &amp; Wireless</h1>
+    <p class="subtitle">以太网 CSMA/CD、二进制指数退避、WLAN CSMA/CA</p>
+
+    <!-- ============================================================
+         1. Why minimum frame size
+         ============================================================ -->
+    <section id="why-min">
+      <h2>1. 为什么要最小帧长？ <span class="cn">Minimum Frame Size (p13)</span></h2>
+
+      <div class="exam-key double">
+        <p><strong>核心原因：</strong>CSMA/CD 必须保证发送方在<strong>帧发完之前</strong>就能检测到碰撞，否则它发完就走，根本不知道发生了冲突，也不会重传。</p>
+      </div>
+
+      <h3>场景分析</h3>
+      <ol>
+        <li>A 开始发送，信号沿介质传播，需要时间 τ（单程传播延迟）才能到达最远点 B</li>
+        <li>假设 B 在 A 发完之前的最后一刻才开始发送 → 双方信号在介质上碰撞</li>
+        <li>碰撞信号要再传 τ 回到 A → A 才知道"我冲突了"</li>
+        <li>所以从 A 开始发到 A 检测到碰撞，最坏情况要 <strong>2τ</strong> 时间</li>
+        <li>要让 A 在帧发完前还能检测到这个碰撞 → <strong>帧的传输时间 T<sub>frame</sub> ≥ 2τ</strong></li>
+      </ol>
+
+      <svg class="diagram" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+        <text x="40" y="20">A</text>
+        <text x="540" y="20">B</text>
+        <line class="axis" x1="60" y1="30" x2="60" y2="200"/>
+        <line class="axis" x1="540" y1="30" x2="540" y2="200"/>
+
+        <!-- A starts sending at t=0 -->
+        <text x="0" y="50" font-size="11">t=0</text>
+        <line x1="60" y1="45" x2="540" y2="120" stroke="#2563eb" stroke-width="2"/>
+        <text x="280" y="78" font-size="11" fill="#2563eb">A 的信号</text>
+
+        <!-- B starts just before A's signal arrives at t=τ-ε -->
+        <text x="0" y="118" font-size="11">t ≈ τ⁻</text>
+        <line x1="540" y1="115" x2="60" y2="190" stroke="#ef4444" stroke-width="2"/>
+        <text x="280" y="170" font-size="11" fill="#ef4444">B 的信号 → 碰撞回到 A 用 2τ</text>
+
+        <!-- collision marker -->
+        <circle cx="300" cy="120" r="6" fill="#fb923c"/>
+        <text x="305" y="115" font-size="10" fill="#c2410c">💥 碰撞</text>
+
+        <text x="0" y="195" font-size="11">t = 2τ</text>
+      </svg>
+    </section>
+
+    <!-- ============================================================
+         2. Minimum frame size formula
+         ============================================================ -->
+    <section id="formula">
+      <h2>2. 最小帧长公式 <span class="cn">(p17)</span></h2>
+
+      <div class="formula">
+        <span class="formula-label">基本不等式</span>
+        T<sub>frame</sub> ≥ 2τ = 2L / v
+      </div>
+
+      <div class="formula">
+        <span class="formula-label">最小帧长（比特）</span>
+        L<sub>min</sub> = R · 2τ = R · 2L / v
+      </div>
+
+      <ul>
+        <li><strong>T<sub>frame</sub></strong> = 帧的传输时间（s）</li>
+        <li><strong>τ</strong> = 单程传播延迟（s）</li>
+        <li><strong>L</strong> = 网络长度 / 端到端距离（m）</li>
+        <li><strong>v</strong> = 信号传播速度（m/s，铜缆约 2×10⁸，光纤约 2×10⁸）</li>
+        <li><strong>R</strong> = 数据率（bps）</li>
+        <li><strong>L<sub>min</sub></strong> = 最小帧长（bit）</li>
+      </ul>
+
+      <details class="example" open>
+        <summary>例题 1：10 Mbps 以太网，最长 2.5 km，信号速度 2×10⁸ m/s，求最小帧长</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">Step 1.</span> 单程传播延迟 τ = L / v = 2500 / (2×10⁸) = 1.25×10⁻⁵ s = 12.5 μs
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2.</span> 往返延迟 2τ = 25 μs
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3.</span> 最小帧长（比特）= R · 2τ = 10×10⁶ × 25×10⁻⁶ = <strong>250 bit</strong>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 4.</span> 换算字节：250 / 8 = 31.25 byte → 实际以太网取 <strong>64 byte = 512 bit</strong>（留余量，含 18 字节头 + 46 字节最少数据）
+          </div>
+        </div>
+      </details>
+
+      <details class="example">
+        <summary>例题 2：要把以太网做到 100 Mbps，距离要变成多少？</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">分析：</span> R 增大 10 倍，要保持 L<sub>min</sub>=512 bit，则 2τ 缩小 10 倍 → 距离 L 缩小 10 倍 → 250 m
+          </div>
+          <div class="step">
+            <span class="step-label">结论：</span> 100Base-T 的网段长度被限制在约 100 m（实际还要更短）。这就是<strong>更高速以太网必须降级网段长度</strong>的物理原因。
+          </div>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 为什么以太网设最小帧 64 字节而不是 31 字节？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>上面算出"理论"最小 250 bit ≈ 32 字节，但 IEEE 802.3 规定 64 字节 = 512 bit。多出来的余量是为：</p>
+          <ul>
+            <li>中继器/集线器的处理延迟（每个都让 2τ 增大）</li>
+            <li>同轴电缆比纯铜慢一点</li>
+            <li>给标准留弹性，便于未来扩展</li>
+          </ul>
+          <p>所以记住：<strong>以太网最小帧 = 64 字节 = 512 bit</strong>。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         3. Binary Exponential Backoff
+         ============================================================ -->
+    <section id="backoff">
+      <h2>3. Binary Exponential Back-off <span class="cn">二进制指数退避 (p35)</span></h2>
+
+      <div class="exam-key double">
+        <p>在 CSMA/CD 中，当检测到冲突后，发送方<strong>不立刻重传</strong>，而是等一个随机时间后再试，避免同步性重碰撞。</p>
+      </div>
+
+      <h3>算法步骤 Algorithm</h3>
+      <ol>
+        <li>第 <em>n</em> 次冲突后，让 <em>k</em> = min(<em>n</em>, 10)</li>
+        <li>从集合 { 0, 1, 2, …, 2<sup><em>k</em></sup> − 1 } 中<strong>均匀随机</strong>选一个数 <em>r</em></li>
+        <li>等待 <em>r</em> 个<strong>时间槽 (slot time)</strong> 后重传<br>
+        <em>（时间槽 = 2τ，以太网中为 51.2 μs）</em></li>
+        <li>若<strong>第 16 次还失败</strong>，放弃，上报错误</li>
+      </ol>
+
+      <h3>每次冲突后的等待区间</h3>
+      <table>
+        <thead><tr><th>第 n 次冲突</th><th>k = min(n,10)</th><th>等待槽数 r 从 { … } 中选</th><th>最大等待时间（slot）</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>{0, 1}</td><td>1</td></tr>
+          <tr><td>2</td><td>2</td><td>{0, 1, 2, 3}</td><td>3</td></tr>
+          <tr><td>3</td><td>3</td><td>{0, 1, 2, …, 7}</td><td>7</td></tr>
+          <tr><td>4</td><td>4</td><td>{0, 1, …, 15}</td><td>15</td></tr>
+          <tr><td>5</td><td>5</td><td>{0, …, 31}</td><td>31</td></tr>
+          <tr><td>…</td><td>…</td><td>…</td><td>…</td></tr>
+          <tr><td>10</td><td>10</td><td>{0, …, 1023}</td><td>1023</td></tr>
+          <tr><td>11–16</td><td>10（封顶）</td><td>{0, …, 1023}</td><td>1023</td></tr>
+          <tr><td>17</td><td>—</td><td><strong>放弃</strong></td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <details class="example" open>
+        <summary>例题：连续发生 3 次冲突后，最长可能要等多少 μs？（slot = 51.2 μs）</summary>
+        <div>
+          <div class="step"><span class="step-label">Step 1.</span> n=3, k=3, 等待集合 {0,1,...,7}，最大 r=7</div>
+          <div class="step"><span class="step-label">Step 2.</span> 最长 = 7 × 51.2 μs = <strong>358.4 μs</strong></div>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 为什么用"二进制指数"？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>设想 N 个站同时想发：</p>
+          <ul>
+            <li>第一次冲突，每个站从 {0,1} 随机选 → 仍有 50% 概率再次冲撞</li>
+            <li>下一次区间扩大到 {0,1,2,3}，冲突概率降到 25%</li>
+            <li>区间指数级扩大 → 冲突概率指数级下降</li>
+          </ul>
+          <p>这种自适应让网络在<strong>低负载时延迟低</strong>（区间小，几乎立刻重传），在<strong>高负载时也不爆炸</strong>（区间扩大避免持续冲突），是个非常优雅的退避机制。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         4. WLAN & CSMA/CA
+         ============================================================ -->
+    <section id="wlan">
+      <h2>4. WLAN &amp; CSMA/CA <span class="cn">无线局域网 (p50–51)</span></h2>
+
+      <h3>为什么无线不能用 CSMA/CD？</h3>
+      <div class="exam-key double">
+        <p>无线网卡<strong>无法</strong>边发边听（半双工，发射时本机天线信号远强于其它信号），所以<strong>检测不到</strong>冲突，CSMA/CD 失效。改用 CSMA/CA：<strong>避免</strong>冲突而不是检测。</p>
+      </div>
+
+      <h3>Hidden Terminal 隐藏终端问题</h3>
+      <svg class="diagram" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+        <circle class="node" cx="100" cy="100" r="22"/><text x="100" y="105" text-anchor="middle" fill="white" font-weight="bold">A</text>
+        <circle class="node" cx="300" cy="100" r="22" fill="#22c55e"/><text x="300" y="105" text-anchor="middle" fill="white" font-weight="bold">AP</text>
+        <circle class="node" cx="500" cy="100" r="22"/><text x="500" y="105" text-anchor="middle" fill="white" font-weight="bold">C</text>
+        <!-- range circles -->
+        <circle cx="100" cy="100" r="120" fill="none" stroke="#3b82f6" stroke-dasharray="4,4"/>
+        <circle cx="500" cy="100" r="120" fill="none" stroke="#ef4444" stroke-dasharray="4,4"/>
+        <text x="50" y="40" font-size="11" fill="#2563eb">A 的范围</text>
+        <text x="450" y="40" font-size="11" fill="#dc2626">C 的范围</text>
+        <text x="170" y="180" font-size="11">A 和 C 互相听不到，但都能到 AP → 在 AP 处冲突</text>
+      </svg>
+      <p>A 和 C 都能与 AP 通信，但相互<strong>听不到</strong>对方。A 听到信道空闲就发，同时 C 也以为空闲也发 → 两个信号在 AP 处<strong>同时到达，相互干扰</strong>。这就是<strong>隐藏终端 (hidden terminal)</strong>。</p>
+
+      <h3>CSMA/CA 基本流程</h3>
+      <ol>
+        <li>站点想发送 → <strong>侦听信道</strong></li>
+        <li>若空闲，等待一个 <strong>DIFS</strong>（分布式协调间隔）</li>
+        <li>再等一个<strong>随机退避时间</strong>（避免多个站同时抢发）</li>
+        <li>发送数据帧</li>
+        <li>接收方收到正确帧后等一个 <strong>SIFS</strong>（短间隔，比 DIFS 短），回 <strong>ACK</strong></li>
+        <li>发送方<strong>没收到 ACK</strong> → 假定冲突或丢包，按二进制指数退避重传</li>
+      </ol>
+
+      <h3>RTS / CTS 机制 — 解决隐藏终端</h3>
+      <ol>
+        <li>A 想发送大数据 → 先发<strong>RTS (Request To Send)</strong> 给 AP（小包）</li>
+        <li>AP 回<strong>CTS (Clear To Send)</strong>，所有<strong>能听到 AP</strong>的站（包括 C）都收到，知道"信道接下来要被占用 N 微秒"</li>
+        <li>C 听到 CTS → 自觉沉默</li>
+        <li>A 安全地发送大数据 → AP 收到回 ACK</li>
+      </ol>
+
+      <details class="cn-note">
+        <summary>💡 NAV 网络分配向量是什么？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>RTS 和 CTS 包里都含有"接下来要占用信道多久"的字段。听到的站把这个时长写进自己的 <strong>NAV (Network Allocation Vector)</strong> 计时器，期间即使本地侦听信道空闲，也<strong>不发</strong>。这叫"虚拟载波侦听"，配合物理载波侦听一起判断信道是否可用。</p>
+        </div>
+      </details>
+
+      <h3>CSMA/CD vs CSMA/CA 对比表 ⭐⭐</h3>
+      <table>
+        <thead><tr><th>项</th><th>CSMA/CD（有线以太网）</th><th>CSMA/CA（无线 Wi-Fi）</th></tr></thead>
+        <tbody>
+          <tr><td>全称</td><td>Collision Detection 检测</td><td>Collision Avoidance 避免</td></tr>
+          <tr><td>能否边发边听</td><td>能</td><td>不能（无线半双工）</td></tr>
+          <tr><td>冲突处理</td><td>检测到冲突立即停发 + jam + 退避</td><td>无法检测；用 ACK 间接判断 + 避免</td></tr>
+          <tr><td>主要技术</td><td>退避、jam 信号</td><td>DIFS、SIFS、随机退避、RTS/CTS、ACK</td></tr>
+          <tr><td>典型场景</td><td>10/100 Mbps 以太网（已被交换机+全双工取代）</td><td>802.11 Wi-Fi</td></tr>
+          <tr><td>是否需要 ACK</td><td>不需要</td><td><strong>需要</strong>（用于确认与判断冲突）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         Quiz
+         ============================================================ -->
+    <section id="quiz" class="quiz-section">
+      <h2>🎯 Self-Test <span class="cn">章末自测 (6 题)</span></h2>
+
+      <div class="quiz-q" data-type="blank" data-answer="500|500bit">
+        <p class="q-stem"><span class="q-num">Q1.</span> 100 Mbps 以太网，距离 500 m，v = 2×10⁸ m/s，求最小帧长（bit）。</p>
+        <div class="q-blank">L<sub>min</sub> = <input type="text"> bit</div>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <p class="q-feedback" style="display:none"></p>
+        <div class="q-explain" style="display:none">
+          τ = 500 / 2×10⁸ = 2.5 μs；2τ = 5 μs<br>
+          L<sub>min</sub> = R · 2τ = 100×10⁶ × 5×10⁻⁶ = <strong>500 bit</strong>
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q2.</span> 为什么 CSMA/CD 需要规定最小帧长？</p>
+        <ul class="q-options">
+          <li>A. 节省带宽</li>
+          <li>B. 让接收方有足够缓冲</li>
+          <li>C. 保证发送方在帧发完之前能检测到冲突</li>
+          <li>D. 与 IP 头部对齐</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> 若帧太短，发送方发完后才"听到"远端的冲突回波，已经无法重传该帧。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q3.</span> 二进制指数退避第 4 次冲突后，随机槽数从哪个集合中选？</p>
+        <ul class="q-options">
+          <li>A. {0,1,2,3}</li>
+          <li>B. {0,1,...,7}</li>
+          <li>C. {0,1,...,15}</li>
+          <li>D. {0,1,...,31}</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> 第 n 次冲突，k=min(n,10)，区间是 {0,...,2<sup>k</sup>-1}。n=4 → 2⁴=16 → {0,1,...,15}。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q4.</span> 关于无线 LAN 不能直接用 CSMA/CD，主要原因是？</p>
+        <ul class="q-options">
+          <li>A. 无线带宽太低</li>
+          <li>B. 无线网卡发送时本机天线信号太强，无法同时听到远端微弱信号</li>
+          <li>C. 无线不支持以太网帧</li>
+          <li>D. 无线没有 MAC 地址</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>B.</strong> 无线收发同频段，发的时候听不到别人。所以改用 CSMA/CA 主动避免冲突，并用 ACK 确认。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="0">
+        <p class="q-stem"><span class="q-num">Q5.</span> A 和 C 都能与 AP 通信但听不到对方，A 在发送时 C 也开始发，导致 AP 收到的信号互相干扰。这种情况叫：</p>
+        <ul class="q-options">
+          <li>A. Hidden Terminal 隐藏终端</li>
+          <li>B. Exposed Terminal 暴露终端</li>
+          <li>C. Capture Effect 捕获效应</li>
+          <li>D. Near-Far Problem 远近问题</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>A.</strong> 隐藏终端：两站对 AP 都可见但相互"看不见"。RTS/CTS 机制就是为解决这个问题设计的。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="3">
+        <p class="q-stem"><span class="q-num">Q6.</span> CSMA/CD 与 CSMA/CA 的核心区别是？</p>
+        <ul class="q-options">
+          <li>A. CSMA/CD 用 ACK，CSMA/CA 不用</li>
+          <li>B. CSMA/CD 用于无线，CSMA/CA 用于有线</li>
+          <li>C. 二者完全相同</li>
+          <li>D. CSMA/CD <strong>检测</strong>冲突；CSMA/CA <strong>避免</strong>冲突</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>D.</strong> CD = Collision Detection（事后检测），CA = Collision Avoidance（事前避免）。无线无法边发边听，所以只能"避免"。同时 CSMA/CA 需要 ACK 来间接判断冲突，CSMA/CD 不需要。
+        </div>
+      </div>
+    </section>
+
+    <footer><a href="ch5.html">← Ch5</a> · Chapter 6 完 · <a href="index.html">回首页</a></footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>

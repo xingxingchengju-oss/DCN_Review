@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch2 物理层 | DCN Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>本章目录</h3>
+    <ul>
+      <li><a href="#media">1. Transmission Media 介质分类</a></li>
+      <li><a href="#wireless">2. Wireless Transmission 无线传输</a></li>
+      <li><a href="#propagation">3. Propagation Methods 传播方式</a></li>
+      <li><a href="#quiz">🎯 自测题 Quiz</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <h1>Chapter 2 — Physical Layer</h1>
+    <p class="subtitle">物理层：传输介质、无线频谱、传播方式</p>
+
+    <!-- ============================================================
+         1. Transmission Media
+         ============================================================ -->
+    <section id="media">
+      <h2>1. Transmission Media <span class="cn">传输介质分类 (p14)</span></h2>
+      <p>传输介质分两大类：</p>
+
+      <div class="compare">
+        <div>
+          <h4>Guided 有线（导向）介质</h4>
+          <p>信号沿物理路径传播：</p>
+          <ul>
+            <li><strong>Twisted Pair</strong> 双绞线 (UTP/STP)</li>
+            <li><strong>Coaxial Cable</strong> 同轴电缆</li>
+            <li><strong>Optical Fiber</strong> 光纤</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Unguided 无线（非导向）介质</h4>
+          <p>信号在自由空间中以电磁波形式传播：</p>
+          <ul>
+            <li><strong>Radio Waves</strong> 无线电波</li>
+            <li><strong>Microwave</strong> 微波</li>
+            <li><strong>Infrared</strong> 红外</li>
+            <li><strong>Visible Light</strong> 可见光（Li-Fi）</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>有线介质对比 Comparison</h3>
+      <table>
+        <thead>
+          <tr><th>介质</th><th>带宽 Bandwidth</th><th>距离 Distance</th><th>抗干扰</th><th>成本</th><th>典型应用</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>UTP 双绞线</strong></td><td>低-中（Cat6: 1–10 Gbps）</td><td>~100 m</td><td>弱</td><td>低</td><td>办公室以太网、电话线</td></tr>
+          <tr><td><strong>同轴电缆</strong></td><td>中-高（数百 MHz）</td><td>数公里</td><td>较强</td><td>中</td><td>有线电视 (CATV)、早期 LAN</td></tr>
+          <tr><td><strong>光纤</strong></td><td><span class="hl">极高（Tbps 量级）</span></td><td>数十-数百公里</td><td><span class="hl">极强（电磁免疫）</span></td><td>高</td><td>骨干网、海底电缆</td></tr>
+        </tbody>
+      </table>
+
+      <div class="exam-key">
+        <p><strong>记忆口诀：</strong>光纤 = <strong>带宽最高 + 距离最远 + 抗干扰最强</strong>，但成本也最贵。双绞线最便宜但带宽和抗干扰都最弱。</p>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 UTP vs STP 的区别？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p><strong>UTP</strong> (Unshielded Twisted Pair) 无屏蔽双绞线：仅靠两根线的绞合相互抵消干扰，便宜但抗干扰弱。</p>
+          <p><strong>STP</strong> (Shielded Twisted Pair) 屏蔽双绞线：外面再包一层金属屏蔽层，抗干扰强但贵。</p>
+          <p>日常以太网（电话线、网线 RJ-45）几乎都用 UTP（Cat5e / Cat6 / Cat6a 等等级）。</p>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 光纤为什么这么强？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>光纤用<strong>光信号</strong>传播，全反射原理把光"关"在玻璃纤芯内：</p>
+          <ul>
+            <li>光信号不受电磁干扰（不像电信号被附近高压线、变压器干扰）</li>
+            <li>光的频率极高 → 可承载海量数据</li>
+            <li>损耗极低 → 不加放大器可传几十公里</li>
+            <li>分单模 (SMF, 1310/1550 nm) 与多模 (MMF, 850/1300 nm)，单模距离更远</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         2. Wireless
+         ============================================================ -->
+    <section id="wireless">
+      <h2>2. Wireless Transmission <span class="cn">无线传输 (p30–31)</span></h2>
+      <p>无线信号即<strong>电磁波</strong>，频率不同的电磁波用途不同。频率 f × 波长 λ = 光速 c (= 3×10⁸ m/s)。</p>
+
+      <table>
+        <thead><tr><th>频段</th><th>频率</th><th>波长</th><th>典型用途</th></tr></thead>
+        <tbody>
+          <tr><td><strong>VLF/LF</strong> 甚低频/低频</td><td>3–300 kHz</td><td>10–100 km</td><td>潜艇通信、导航</td></tr>
+          <tr><td><strong>MF</strong> 中频</td><td>300 kHz – 3 MHz</td><td>100 m – 1 km</td><td>AM 广播</td></tr>
+          <tr><td><strong>HF</strong> 高频</td><td>3–30 MHz</td><td>10–100 m</td><td>短波广播、业余无线电</td></tr>
+          <tr><td><strong>VHF</strong> 甚高频</td><td>30–300 MHz</td><td>1–10 m</td><td>FM 广播、电视</td></tr>
+          <tr><td><strong>UHF</strong> 特高频</td><td>300 MHz – 3 GHz</td><td>10 cm – 1 m</td><td>手机 4G/5G、电视、GPS</td></tr>
+          <tr><td><strong>SHF</strong> 超高频（微波）</td><td>3–30 GHz</td><td>1–10 cm</td><td>Wi-Fi (2.4/5 GHz)、卫星、雷达</td></tr>
+          <tr><td><strong>EHF</strong> 极高频</td><td>30–300 GHz</td><td>1 mm – 1 cm</td><td>5G 毫米波、太空通信</td></tr>
+          <tr><td>红外/可见光</td><td>10¹²–10¹⁵ Hz</td><td>μm 级</td><td>遥控器、光纤、Li-Fi</td></tr>
+        </tbody>
+      </table>
+
+      <div class="exam-key">
+        <p><strong>常见考点：</strong></p>
+        <ul>
+          <li>Wi-Fi 在 <strong>2.4 GHz / 5 GHz</strong>（属 SHF/UHF）</li>
+          <li>蜂窝手机 4G/5G 主要在 <strong>UHF/低 SHF</strong></li>
+          <li>AM 广播是 <strong>MF</strong>（地波传播），FM 广播是 <strong>VHF</strong>（直线传播）</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. Propagation
+         ============================================================ -->
+    <section id="propagation">
+      <h2>3. Propagation Methods <span class="cn">传播方式 (p33)</span></h2>
+      <p>无线电波在大气中可以三种方式传播：</p>
+
+      <table>
+        <thead>
+          <tr><th>传播方式</th><th>路径</th><th>适用频段</th><th>典型应用</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Ground Wave</strong><br>地波</td>
+            <td>沿地球表面绕射；受地形吸收</td>
+            <td>VLF–MF<br>(&lt; 2 MHz)</td>
+            <td>AM 广播、海事通信</td>
+          </tr>
+          <tr>
+            <td><strong>Sky Wave</strong><br>天波（电离层反射）</td>
+            <td>从电离层 (ionosphere) 反射回地面，可绕地球远距离传播</td>
+            <td>HF<br>(2–30 MHz)</td>
+            <td>短波广播、业余无线电（"BBC World"）</td>
+          </tr>
+          <tr>
+            <td><strong>Line-of-Sight (LOS)</strong><br>视距传播 / 空间波</td>
+            <td>发射端与接收端必须"看得见"（直线可达）</td>
+            <td>VHF 及以上<br>(&gt; 30 MHz)</td>
+            <td>FM、电视、微波接力、卫星、Wi-Fi</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <svg class="diagram" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Earth -->
+        <ellipse cx="300" cy="280" rx="350" ry="100" fill="#a3c4f3" stroke="#5a6578" stroke-width="1"/>
+        <!-- Ionosphere -->
+        <path d="M 50 60 Q 300 30 550 60" stroke="#fb923c" stroke-width="2" fill="none" stroke-dasharray="4,3"/>
+        <text x="540" y="55" font-size="11">Ionosphere 电离层</text>
+        <!-- Ground wave -->
+        <path d="M 100 190 Q 200 200 300 195" stroke="#22c55e" stroke-width="2.5" fill="none"/>
+        <text x="100" y="215" font-size="11" fill="#16a34a">Ground (地波)</text>
+        <!-- Sky wave -->
+        <path d="M 150 190 L 270 75 L 400 190" stroke="#ef4444" stroke-width="2.5" fill="none"/>
+        <text x="350" y="120" font-size="11" fill="#dc2626">Sky 天波</text>
+        <!-- LOS -->
+        <line x1="180" y1="170" x2="430" y2="170" stroke="#3b82f6" stroke-width="2.5"/>
+        <text x="270" y="160" font-size="11" fill="#2563eb">Line-of-Sight 视距</text>
+        <!-- Antennas -->
+        <polygon points="180,170 175,190 185,190" fill="#1a1f2e"/>
+        <polygon points="430,170 425,190 435,190" fill="#1a1f2e"/>
+        <text x="40" y="195" font-size="10">📡</text>
+      </svg>
+
+      <div class="exam-key double">
+        <p><strong>关键对应：</strong></p>
+        <ul>
+          <li>频率<strong>低</strong> → <strong>地波</strong>（能绕地表）</li>
+          <li>频率<strong>中</strong> → <strong>天波</strong>（电离层反射）</li>
+          <li>频率<strong>高</strong> → <strong>视距</strong>（直线，需高塔/卫星）</li>
+        </ul>
+        <p>原因：频率越高，电磁波越像光（直线传播、不易绕射、不易被电离层反射）。</p>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 为什么短波广播能跨洲传输？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>短波 (HF, 3–30 MHz) 频率刚好在天波传播的"甜区"：它能被高空电离层反射回地面，然后再被地面反射，再被电离层反射……如此"接力跳跃"，可以传到地球另一面。</p>
+          <p>这就是为什么 BBC、VOA 等国际广播至今仍保留短波频段——不需要任何卫星基础设施即可全球到达。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         Quiz
+         ============================================================ -->
+    <section id="quiz" class="quiz-section">
+      <h2>🎯 Self-Test <span class="cn">章末自测 (5 题)</span></h2>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q1.</span> 下列哪种介质具有<strong>最高带宽、最强抗电磁干扰</strong>？</p>
+        <ul class="q-options">
+          <li>A. UTP 双绞线</li>
+          <li>B. 同轴电缆</li>
+          <li>C. 光纤 Fiber</li>
+          <li>D. 微波 Microwave</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> 光纤用光信号传输，对电磁干扰免疫，带宽可达 Tbps 量级。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q2.</span> Wi-Fi (802.11) 工作在哪个频段？</p>
+        <ul class="q-options">
+          <li>A. MF (中频 ~1 MHz)</li>
+          <li>B. SHF (~2.4 GHz / 5 GHz)</li>
+          <li>C. HF (3–30 MHz)</li>
+          <li>D. VLF (3–30 kHz)</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>B.</strong> Wi-Fi 工作在 2.4 GHz 和 5 GHz 频段，属于 SHF（超高频/微波）。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q3.</span> 短波广播（HF, 3–30 MHz）可以跨洲传输，主要利用了哪种传播方式？</p>
+        <ul class="q-options">
+          <li>A. Ground wave 地波</li>
+          <li>B. Sky wave 天波（电离层反射）</li>
+          <li>C. Line-of-sight 视距</li>
+          <li>D. 卫星中继</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>B.</strong> HF 波被高空电离层反射回地面，再地面反射，再被电离层反射……如此"跳跃"可传至全球。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q4.</span> 卫星通信（GHz 频段）的电波传播属于：</p>
+        <ul class="q-options">
+          <li>A. Ground wave</li>
+          <li>B. Sky wave</li>
+          <li>C. Line-of-sight</li>
+          <li>D. 以上都不是</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> 高频信号不会被电离层反射也不能绕地球，必须直线传播。卫星与地面站之间是 LOS。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="0">
+        <p class="q-stem"><span class="q-num">Q5.</span> 一个跨国骨干网，需要 10 Gbps 带宽和极长距离传输，应选择：</p>
+        <ul class="q-options">
+          <li>A. 光纤 Optical Fiber</li>
+          <li>B. UTP 双绞线</li>
+          <li>C. 微波塔接力</li>
+          <li>D. 同轴电缆</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>A.</strong> 光纤带宽最高、损耗最低、抗干扰最强，是骨干和海底电缆的标准选择。</div>
+      </div>
+    </section>
+
+    <footer><a href="ch1.html">← Ch1</a> · Chapter 2 完 · <a href="ch3.html">Ch3 链路层 →</a></footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>

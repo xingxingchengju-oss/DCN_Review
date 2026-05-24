@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch5 应用层 / Socket 编程 | DCN Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>本章目录</h3>
+    <ul>
+      <li><a href="#socket-basics">1. Socket 基础</a></li>
+      <li><a href="#api">2. API 12 原语</a></li>
+      <li><a href="#tcp-server">3. TCP Server 完整代码 ⭐⭐</a></li>
+      <li><a href="#tcp-client">4. TCP Client 完整代码 ⭐⭐</a></li>
+      <li><a href="#udp-code">5. UDP Server / Client</a></li>
+      <li><a href="#echo">6. 完整 Echo 示例</a></li>
+      <li><a href="#small">7. 常考小题</a></li>
+      <li><a href="#fill">8. 代码挖空</a></li>
+      <li><a href="#quiz">🎯 自测题 Quiz</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <h1>Chapter 5 — Application Layer (Socket Programming)</h1>
+    <p class="subtitle">应用层：Socket 编程（C / Winsock 版本）<br>
+    <strong style="color:#dc2626">⚠️ 老师明确告知此章会考"写一段能运行的程序"</strong></p>
+
+    <!-- ============================================================
+         1. Socket Basics
+         ============================================================ -->
+    <section id="socket-basics">
+      <h2>1. Socket 基础概念 <span class="cn">Fundamentals</span></h2>
+
+      <div class="exam-key">
+        <p><strong>Socket（套接字）</strong> = 进程间通信的<strong>端点</strong>。两个 socket 配对形成一个连接，应用程序通过 socket 把数据交给传输层。</p>
+      </div>
+
+      <h3>Socket 由三元组唯一标识</h3>
+      <ul>
+        <li>IP 地址（互联网中机器的标识）</li>
+        <li>端口号 Port（1–65535，标识机器上具体进程）</li>
+        <li>协议（TCP 或 UDP）</li>
+      </ul>
+
+      <h3>Two Socket Types 两种类型</h3>
+      <table>
+        <thead><tr><th>类型</th><th>使用协议</th><th>特点</th><th>API</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Stream Socket</strong><br>流套接字</td><td>TCP</td><td>可靠、有序的字节流</td><td><code>SOCK_STREAM</code></td></tr>
+          <tr><td><strong>Datagram Socket</strong><br>数据报套接字</td><td>UDP</td><td>不可靠、独立数据包，每包≤65,500 字节</td><td><code>SOCK_DGRAM</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>知名端口 Well-Known Ports (1–1023)</h3>
+      <table>
+        <tr><th>端口</th><th>服务</th><th>端口</th><th>服务</th></tr>
+        <tr><td>20/21</td><td>FTP</td><td>53</td><td>DNS</td></tr>
+        <tr><td>22</td><td>SSH</td><td>80</td><td>HTTP</td></tr>
+        <tr><td>23</td><td>Telnet</td><td>443</td><td>HTTPS</td></tr>
+        <tr><td>25</td><td>SMTP</td><td>110</td><td>POP3</td></tr>
+      </table>
+      <p>应用自用端口一般选 <strong>1024–65535</strong>。</p>
+
+      <h3>Client-Server 模型</h3>
+      <ul>
+        <li><strong>Server</strong>：被动等待，监听特定端口；不预先知道有哪些客户端</li>
+        <li><strong>Client</strong>：主动发起，必须知道服务器的 IP + Port</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================
+         2. Socket API 12 Primitives
+         ============================================================ -->
+    <section id="api">
+      <h2>2. Socket API 12 原语 <span class="cn">Primitives</span></h2>
+
+      <table>
+        <thead><tr><th>原语</th><th>用途</th><th>常用方</th></tr></thead>
+        <tbody>
+          <tr><td><code>socket()</code></td><td>创建一个新的 socket 端点</td><td>双方</td></tr>
+          <tr><td><code>bind()</code></td><td>把 socket 绑定到一个本地地址 + 端口</td><td>Server</td></tr>
+          <tr><td><code>listen()</code></td><td>声明愿意接受连接，并指定 backlog</td><td>Server</td></tr>
+          <tr><td><code>accept()</code></td><td>阻塞，直到有连接到来；返回新 socket</td><td>Server</td></tr>
+          <tr><td><code>connect()</code></td><td>主动建立连接</td><td>Client</td></tr>
+          <tr><td><code>send()</code> / <code>recv()</code></td><td>TCP 收发数据</td><td>双方</td></tr>
+          <tr><td><code>sendto()</code> / <code>recvfrom()</code></td><td>UDP 收发数据（带地址）</td><td>双方</td></tr>
+          <tr><td><code>close()</code> / <code>closesocket()</code></td><td>关闭 socket（Winsock 用 closesocket）</td><td>双方</td></tr>
+          <tr><td><code>setsockopt()</code></td><td>设置 socket 选项（如 SO_REUSEADDR）</td><td>双方</td></tr>
+          <tr><td><code>WSAStartup()</code> / <code>WSACleanup()</code></td><td>Winsock 初始化 / 清理（只在 Windows）</td><td>双方</td></tr>
+        </tbody>
+      </table>
+
+      <h3>调用顺序图（必背） Call Sequence</h3>
+
+      <div class="compare">
+        <div>
+          <h4>TCP 流程 (Stream)</h4>
+          <pre><code>SERVER:
+WSAStartup()
+socket()       创建
+bind()         绑定端口
+listen()       开始监听
+accept()       阻塞等连接 ←─┐
+recv()/send()  收发数据    │
+closesocket()  关闭        │
+WSACleanup()                │
+                            │
+CLIENT:                     │
+WSAStartup()                │
+socket()                    │
+connect() ──────────────────┘
+send()/recv()
+closesocket()
+WSACleanup()</code></pre>
+        </div>
+        <div>
+          <h4>UDP 流程 (Datagram)</h4>
+          <pre><code>SERVER:
+WSAStartup()
+socket()       SOCK_DGRAM
+bind()         绑定端口
+recvfrom() ──┐
+sendto()     │ 反复
+             │
+closesocket()│
+WSACleanup() │
+             │
+CLIENT:      │
+WSAStartup() │
+socket() ─── ┘
+sendto()
+recvfrom()
+closesocket()
+WSACleanup()</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. TCP Server
+         ============================================================ -->
+    <section id="tcp-server">
+      <h2>3. TCP Server 完整代码 <span class="cn">⭐⭐ 必背</span></h2>
+
+      <p>编译时记得链接 Winsock 库：<code>gcc server.c -o server -lws2_32</code></p>
+
+<pre><code>// tcp_server.c — Windows / Winsock
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")    // 链接 Winsock 库
+
+#define PORT 7000
+#define BUFSIZE 1024
+
+int main(void) {
+    WSADATA wsaData;
+    SOCKET serverSock, clientSock;
+    struct sockaddr_in serverAddr, clientAddr;
+    int addrLen = sizeof(clientAddr);
+    char buffer[BUFSIZE];
+    int recvBytes;
+
+    // 1) 初始化 Winsock（请求 2.2 版本）
+    if (WSAStartup(MAKEWORD(2, 2), &amp;wsaData) != 0) {
+        fprintf(stderr, "WSAStartup failed\n");
+        return 1;
+    }
+
+    // 2) 创建 socket：IPv4 + TCP
+    serverSock = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSock == INVALID_SOCKET) {
+        perror("socket"); WSACleanup(); return 1;
+    }
+
+    // 3) 准备地址结构
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);  // 任意网卡
+    serverAddr.sin_port = htons(PORT);                // 主机字节序 → 网络字节序
+
+    // 4) 绑定 socket 到端口
+    if (bind(serverSock, (struct sockaddr*)&amp;serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        perror("bind"); closesocket(serverSock); WSACleanup(); return 1;
+    }
+
+    // 5) 监听，最多 5 个挂起连接
+    if (listen(serverSock, 5) == SOCKET_ERROR) {
+        perror("listen"); closesocket(serverSock); WSACleanup(); return 1;
+    }
+    printf("Server listening on port %d...\n", PORT);
+
+    // 6) 接受连接（阻塞）
+    clientSock = accept(serverSock, (struct sockaddr*)&amp;clientAddr, &amp;addrLen);
+    if (clientSock == INVALID_SOCKET) {
+        perror("accept"); closesocket(serverSock); WSACleanup(); return 1;
+    }
+    printf("Client connected.\n");
+
+    // 7) 收发数据
+    recvBytes = recv(clientSock, buffer, BUFSIZE - 1, 0);
+    if (recvBytes &gt; 0) {
+        buffer[recvBytes] = '\0';
+        printf("Received: %s\n", buffer);
+        send(clientSock, "Hello from server!", 18, 0);
+    }
+
+    // 8) 关闭
+    closesocket(clientSock);
+    closesocket(serverSock);
+    WSACleanup();
+    return 0;
+}</code></pre>
+
+      <details class="cn-note">
+        <summary>💡 每个函数到底干啥？<span class="badge-cn">中文逐行</span></summary>
+        <div>
+          <ul>
+            <li><code>WSAStartup</code>：Windows 特有，加载 Winsock DLL，告诉系统你要用网络</li>
+            <li><code>socket(AF_INET, SOCK_STREAM, 0)</code>：申请一个 IPv4 + TCP 的套接字</li>
+            <li><code>sockaddr_in</code>：地址结构体，含族 (AF_INET)、地址、端口</li>
+            <li><code>htons / htonl</code>：把主机字节序转成网络字节序（大端）。<strong>必须用</strong>，否则端口会错</li>
+            <li><code>INADDR_ANY</code>：绑定到本机所有 IP，不限定某张网卡</li>
+            <li><code>bind</code>：把 socket 关联到那个地址，从此该端口的数据都送给这个 socket</li>
+            <li><code>listen(s, backlog)</code>：把 socket 切到被动监听态，backlog 是内核队列长度</li>
+            <li><code>accept</code>：阻塞等连接，返回一个<strong>新</strong> socket 专门和该客户端通信</li>
+            <li><code>recv/send</code>：在已连接 socket 上收发</li>
+            <li><code>closesocket / WSACleanup</code>：释放资源</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         4. TCP Client
+         ============================================================ -->
+    <section id="tcp-client">
+      <h2>4. TCP Client 完整代码 <span class="cn">⭐⭐</span></h2>
+
+<pre><code>// tcp_client.c — Windows / Winsock
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")
+
+#define SERVER_IP   "127.0.0.1"
+#define SERVER_PORT 7000
+#define BUFSIZE     1024
+
+int main(void) {
+    WSADATA wsaData;
+    SOCKET sock;
+    struct sockaddr_in serverAddr;
+    char buffer[BUFSIZE];
+    int recvBytes;
+
+    if (WSAStartup(MAKEWORD(2, 2), &amp;wsaData) != 0) return 1;
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == INVALID_SOCKET) { WSACleanup(); return 1; }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port   = htons(SERVER_PORT);
+    serverAddr.sin_addr.s_addr = inet_addr(SERVER_IP);
+
+    // 主动连接到服务器
+    if (connect(sock, (struct sockaddr*)&amp;serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        perror("connect"); closesocket(sock); WSACleanup(); return 1;
+    }
+    printf("Connected to %s:%d\n", SERVER_IP, SERVER_PORT);
+
+    // 发送一条消息
+    const char *msg = "Hello, server!";
+    send(sock, msg, strlen(msg), 0);
+
+    // 等待回复
+    recvBytes = recv(sock, buffer, BUFSIZE - 1, 0);
+    if (recvBytes &gt; 0) {
+        buffer[recvBytes] = '\0';
+        printf("Server replied: %s\n", buffer);
+    }
+
+    closesocket(sock);
+    WSACleanup();
+    return 0;
+}</code></pre>
+
+      <h3>使用 gethostbyname() 解析域名</h3>
+<pre><code>struct hostent *he;
+he = gethostbyname("www.uic.edu.cn");
+if (he == NULL) { printf("DNS failed\n"); return 1; }
+
+memcpy(&amp;serverAddr.sin_addr, he-&gt;h_addr_list[0], he-&gt;h_length);
+serverAddr.sin_family = AF_INET;
+serverAddr.sin_port   = htons(80);
+connect(sock, (struct sockaddr*)&amp;serverAddr, sizeof(serverAddr));</code></pre>
+
+      <details class="cn-note">
+        <summary>💡 hostent 结构体长啥样？<span class="badge-cn">中文</span></summary>
+        <div>
+<pre><code>struct hostent {
+    char  *h_name;          // 主机标准名 e.g. "uic.edu.cn"
+    char **h_aliases;       // 别名列表
+    int    h_addrtype;      // 地址类型（AF_INET）
+    int    h_length;        // 地址长度（IPv4 为 4 字节）
+    char **h_addr_list;     // 地址列表（二进制网络字节序）
+};
+#define h_addr h_addr_list[0]   // 兼容老代码用第一个地址</code></pre>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         5. UDP code
+         ============================================================ -->
+    <section id="udp-code">
+      <h2>5. UDP Server / Client 代码</h2>
+
+      <h3>UDP Server</h3>
+<pre><code>// udp_server.c
+#include &lt;stdio.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")
+
+int main(void) {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2,2), &amp;wsa);
+
+    SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);   // ← UDP 用 SOCK_DGRAM
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port   = htons(8000);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    bind(s, (struct sockaddr*)&amp;addr, sizeof(addr));
+
+    char buf[1024];
+    struct sockaddr_in clientAddr;
+    int clientLen = sizeof(clientAddr);
+
+    // UDP 没有 listen/accept，直接 recvfrom
+    int n = recvfrom(s, buf, sizeof(buf)-1, 0,
+                     (struct sockaddr*)&amp;clientAddr, &amp;clientLen);
+    buf[n] = '\0';
+    printf("UDP recv: %s\n", buf);
+
+    sendto(s, "pong", 4, 0,
+           (struct sockaddr*)&amp;clientAddr, clientLen);
+
+    closesocket(s);
+    WSACleanup();
+    return 0;
+}</code></pre>
+
+      <h3>UDP Client</h3>
+<pre><code>// udp_client.c
+#include &lt;stdio.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")
+
+int main(void) {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2,2), &amp;wsa);
+
+    SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port   = htons(8000);
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // UDP 不需要 connect，直接 sendto
+    sendto(s, "ping", 4, 0,
+           (struct sockaddr*)&amp;server, sizeof(server));
+
+    char buf[1024];
+    int srvLen = sizeof(server);
+    int n = recvfrom(s, buf, sizeof(buf)-1, 0,
+                     (struct sockaddr*)&amp;server, &amp;srvLen);
+    buf[n] = '\0';
+    printf("UDP reply: %s\n", buf);
+
+    closesocket(s);
+    WSACleanup();
+    return 0;
+}</code></pre>
+
+      <div class="exam-key">
+        <p><strong>UDP 关键差异（必考）：</strong></p>
+        <ul>
+          <li>socket 类型用 <code>SOCK_DGRAM</code> 而不是 <code>SOCK_STREAM</code></li>
+          <li><strong>不</strong>调用 <code>listen()</code>、<code>accept()</code>、<code>connect()</code></li>
+          <li>用 <code>sendto()</code> / <code>recvfrom()</code>（携带地址参数）而不是 <code>send()</code> / <code>recv()</code></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         6. Echo example
+         ============================================================ -->
+    <section id="echo">
+      <h2>6. 完整 Echo Server + Client（多次收发循环）</h2>
+
+      <p>典型考题：<em>"写一个 TCP echo server 和 client，server 把收到的消息原样回送，client 可以多次发送，输入 'quit' 退出。"</em></p>
+
+      <h3>Echo Server</h3>
+<pre><code>// echo_server.c — 循环回送，处理一个客户端
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")
+
+#define PORT 9000
+
+int main(void) {
+    WSADATA wsa; WSAStartup(MAKEWORD(2,2), &amp;wsa);
+
+    SOCKET srv = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons(PORT);
+    bind(srv, (struct sockaddr*)&amp;addr, sizeof(addr));
+    listen(srv, 5);
+    printf("Echo server on port %d\n", PORT);
+
+    struct sockaddr_in cli; int cliLen = sizeof(cli);
+    SOCKET c = accept(srv, (struct sockaddr*)&amp;cli, &amp;cliLen);
+
+    char buf[1024]; int n;
+    while ((n = recv(c, buf, sizeof(buf)-1, 0)) &gt; 0) {
+        buf[n] = '\0';
+        printf("Got: %s", buf);
+        send(c, buf, n, 0);              // 原样回送
+        if (strncmp(buf, "quit", 4) == 0) break;
+    }
+
+    closesocket(c); closesocket(srv); WSACleanup();
+    return 0;
+}</code></pre>
+
+      <h3>Echo Client</h3>
+<pre><code>// echo_client.c — 反复读用户输入，发送给 server
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;winsock2.h&gt;
+#pragma comment(lib, "ws2_32.lib")
+
+int main(void) {
+    WSADATA wsa; WSAStartup(MAKEWORD(2,2), &amp;wsa);
+
+    SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in srv;
+    srv.sin_family = AF_INET;
+    srv.sin_port = htons(9000);
+    srv.sin_addr.s_addr = inet_addr("127.0.0.1");
+    connect(s, (struct sockaddr*)&amp;srv, sizeof(srv));
+
+    char line[1024], reply[1024];
+    while (1) {
+        printf("&gt; "); fflush(stdout);
+        if (!fgets(line, sizeof(line), stdin)) break;
+        send(s, line, strlen(line), 0);
+        int n = recv(s, reply, sizeof(reply)-1, 0);
+        if (n &lt;= 0) break;
+        reply[n] = '\0';
+        printf("Echo: %s", reply);
+        if (strncmp(line, "quit", 4) == 0) break;
+    }
+
+    closesocket(s); WSACleanup();
+    return 0;
+}</code></pre>
+    </section>
+
+    <!-- ============================================================
+         7. 常考小题
+         ============================================================ -->
+    <section id="small">
+      <h2>7. 常考小题速记</h2>
+
+      <h3>字节序 Byte Order</h3>
+      <div class="exam-key">
+        <p>网络字节序 = <strong>大端 Big-Endian</strong>（高字节在低地址）。<br>
+        x86 主机字节序 = 小端 Little-Endian。所以发送前要转换：</p>
+      </div>
+      <table>
+        <tr><th>函数</th><th>含义</th></tr>
+        <tr><td><code>htons(x)</code></td><td>Host TO Network Short — 16 位（端口号）</td></tr>
+        <tr><td><code>htonl(x)</code></td><td>Host TO Network Long — 32 位（IP 地址）</td></tr>
+        <tr><td><code>ntohs(x)</code></td><td>Network TO Host Short</td></tr>
+        <tr><td><code>ntohl(x)</code></td><td>Network TO Host Long</td></tr>
+      </table>
+
+      <h3>地址结构 <code>sockaddr_in</code></h3>
+<pre><code>struct sockaddr_in {
+    short          sin_family;   // AF_INET
+    unsigned short sin_port;     // 端口号（网络字节序）
+    struct in_addr sin_addr;     // IP 地址（网络字节序）
+    char           sin_zero[8];  // 填充，固定为 0
+};
+
+// 用法：
+addr.sin_family = AF_INET;
+addr.sin_port   = htons(8080);
+addr.sin_addr.s_addr = inet_addr("192.168.1.1");
+// 或绑定到所有网卡：
+addr.sin_addr.s_addr = htonl(INADDR_ANY);</code></pre>
+
+      <h3>多线程并发服务器 Multi-threaded Server</h3>
+<pre><code>#include &lt;process.h&gt;
+
+void handle_client(void *arg) {
+    SOCKET c = (SOCKET)(intptr_t)arg;
+    // 处理这个客户端...
+    closesocket(c);
+    _endthread();
+}
+
+// main loop:
+while (1) {
+    SOCKET c = accept(srv, NULL, NULL);
+    _beginthread(handle_client, 0, (void*)(intptr_t)c);
+}</code></pre>
+
+      <h3>setsockopt — 允许端口快速重用</h3>
+<pre><code>int opt = 1;
+setsockopt(srv, SOL_SOCKET, SO_REUSEADDR, (char*)&amp;opt, sizeof(opt));
+// 防止 TIME_WAIT 期间端口"被占用"的报错</code></pre>
+    </section>
+
+    <!-- ============================================================
+         8. 代码挖空
+         ============================================================ -->
+    <section id="fill">
+      <h2>8. 代码挖空练习 <span class="cn">Fill-in</span></h2>
+
+      <details class="example" open>
+        <summary>挖空 1：补全 TCP Server 关键调用</summary>
+        <div>
+<pre><code>// 创建 socket
+SOCKET s = ____ (AF_INET, ____, 0);
+
+struct sockaddr_in addr;
+addr.sin_family      = AF_INET;
+addr.sin_port        = ____(7000);      // 字节序转换
+addr.sin_addr.s_addr = htonl(_______);  // 任意网卡
+
+____ (s, (struct sockaddr*)&amp;addr, sizeof(addr));  // 绑定
+____ (s, 5);                                       // 监听
+SOCKET c = ____ (s, NULL, NULL);                   // 接收连接</code></pre>
+          <p><strong>答案：</strong> socket, SOCK_STREAM, htons, INADDR_ANY, bind, listen, accept</p>
+        </div>
+      </details>
+
+      <details class="example">
+        <summary>挖空 2：补全 UDP Client</summary>
+        <div>
+<pre><code>SOCKET s = socket(AF_INET, ________, 0);  // UDP 类型
+
+struct sockaddr_in srv;
+srv.sin_family = AF_INET;
+srv.sin_port   = htons(8000);
+srv.sin_addr.s_addr = inet_addr("10.0.0.1");
+
+________ (s, "hello", 5, 0,
+          (struct sockaddr*)&amp;srv, sizeof(srv));  // UDP 发送</code></pre>
+          <p><strong>答案：</strong> SOCK_DGRAM, sendto</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         Quiz
+         ============================================================ -->
+    <section id="quiz" class="quiz-section">
+      <h2>🎯 Self-Test <span class="cn">章末自测 (6 题)</span></h2>
+
+      <div class="quiz-q" data-type="mc" data-answer="3">
+        <p class="q-stem"><span class="q-num">Q1.</span> TCP Server 的正确调用顺序是？</p>
+        <ul class="q-options">
+          <li>A. socket → connect → send → recv → close</li>
+          <li>B. socket → bind → accept → listen → recv → close</li>
+          <li>C. socket → listen → bind → accept → recv → close</li>
+          <li>D. socket → bind → listen → accept → recv/send → close</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>D.</strong> 必须先 bind 绑定端口，再 listen 转被动监听态，再 accept 等连接。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="0">
+        <p class="q-stem"><span class="q-num">Q2.</span> 创建 UDP socket 应使用：</p>
+        <ul class="q-options">
+          <li>A. <code>socket(AF_INET, SOCK_DGRAM, 0)</code></li>
+          <li>B. <code>socket(AF_INET, SOCK_STREAM, 0)</code></li>
+          <li>C. <code>socket(AF_INET, SOCK_RAW, 0)</code></li>
+          <li>D. <code>socket(AF_UDP, 0, 0)</code></li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>A.</strong> UDP 用 SOCK_DGRAM；TCP 用 SOCK_STREAM。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q3.</span> <code>htons(8080)</code> 的作用是？</p>
+        <ul class="q-options">
+          <li>A. 把端口 8080 转 ASCII 字符串</li>
+          <li>B. 计算校验和</li>
+          <li>C. 把 16 位端口从主机字节序转换为网络字节序</li>
+          <li>D. 把字符串转 16 进制</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> Host TO Network Short：x86 是小端，网络是大端，必须转换。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q4.</span> 下列哪个调用在 UDP 中<strong>不会</strong>用到？</p>
+        <ul class="q-options">
+          <li>A. socket()</li>
+          <li>B. listen()</li>
+          <li>C. bind()</li>
+          <li>D. sendto()</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>B.</strong> UDP 无连接，不需要 listen/accept。仅 socket + bind + sendto/recvfrom + close。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q5.</span> 在 server 端 <code>addr.sin_addr.s_addr = htonl(INADDR_ANY)</code> 的含义？</p>
+        <ul class="q-options">
+          <li>A. 只允许本机连接</li>
+          <li>B. 限定 127.0.0.1</li>
+          <li>C. 绑定到本机所有网卡的 IP</li>
+          <li>D. 随机选择一个 IP</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> INADDR_ANY (0.0.0.0) 表示"任意网卡上的端口都接收"，多网卡机器常用。</div>
+      </div>
+
+      <div class="quiz-q" data-type="open">
+        <p class="q-stem"><span class="q-num">Q6.</span> 简答：在 TCP server 中，<code>accept()</code> 返回的新 socket 与原 server socket 有何区别？</p>
+        <div class="q-actions"><button class="btn-explain secondary">查看参考答案</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>参考答案：</strong>
+          <ul>
+            <li><strong>原 server socket</strong>：保持监听状态，继续接受新的连接请求</li>
+            <li><strong>accept 返回的新 socket</strong>：专门和<em>当前这个客户端</em>通信，绑定的是已建立的连接（含双方 IP+Port 五元组）</li>
+            <li>这种设计让 server 一边能继续 accept 新客户端，一边能通过新 socket 与已连接的客户端收发数据（通常 accept 后 fork/创建线程处理）</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer><a href="ch4.html">← Ch4</a> · Chapter 5 完 · <a href="ch6.html">Ch6 以太网与无线 →</a></footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>

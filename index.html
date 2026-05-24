@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCN 期末复习 | Data Communication Networks Final Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle" title="切换深浅色 Toggle theme">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>导航 Navigation</h3>
+    <ul>
+      <li><a href="#hero">总览 Overview</a></li>
+      <li><a href="#chapters">章节 Chapters</a></li>
+      <li><a href="#scope">考试范围 Exam Scope</a></li>
+      <li><a href="#tips">使用提示 Tips</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <section id="hero" class="hero">
+      <h1>DCN 期末复习手册</h1>
+      <p>Data Communication Networks — Final Exam Review<br>
+      覆盖全部考试范围，中英对照，重点高亮，含算法演示和章末自测题</p>
+    </section>
+
+    <section id="chapters">
+      <h2>章节快速进入 <span class="cn">Quick Access</span></h2>
+      <div class="cards">
+        <a class="card" href="ch1.html">
+          <span class="ch-num">Chapter 1</span>
+          <h3>引论 Introduction</h3>
+          <p>数字编码、模拟调制、Nyquist 与 Shannon 定理、协议分层、网络拓扑</p>
+          <div class="topics">⭐ 7 个重点小节 · 6 道自测题</div>
+        </a>
+        <a class="card" href="ch2.html">
+          <span class="ch-num">Chapter 2</span>
+          <h3>物理层 Physical Layer</h3>
+          <p>传输介质分类、无线传输、传播方式</p>
+          <div class="topics">⭐ 3 个重点小节 · 5 道自测题</div>
+        </a>
+        <a class="card" href="ch3.html">
+          <span class="ch-num">Chapter 3</span>
+          <h3>链路层 Link Layer</h3>
+          <p>成帧、错误检测/纠正、CRC、Hamming 码、流控、Go-Back-N</p>
+          <div class="topics">⭐ 6 个重点小节 · 8 道自测题 · 含完整 Hamming 例题</div>
+        </a>
+        <a class="card" href="ch4.html">
+          <span class="ch-num">Chapter 4</span>
+          <h3>网络层 Network Layer</h3>
+          <p>IPv6、Dijkstra、距离向量、TCP、拥塞控制、UDP</p>
+          <div class="topics">⭐ 7 个重点小节 · 8 道自测题 · 含 TCP 握手时序图</div>
+        </a>
+        <a class="card" href="ch5.html">
+          <span class="ch-num">Chapter 5</span>
+          <h3>应用层 Application Layer</h3>
+          <p>Socket 编程（C / Winsock，TCP/UDP, Client/Server）</p>
+          <div class="topics">💻 <strong>考写代码</strong> · 完整代码模板 · 6 道自测题</div>
+        </a>
+        <a class="card" href="ch6.html">
+          <span class="ch-num">Chapter 6</span>
+          <h3>以太网与无线 Ethernet &amp; Wireless</h3>
+          <p>最小帧长、二进制指数退避、WLAN、CSMA/CA</p>
+          <div class="topics">⭐ 4 个重点小节 · 6 道自测题 · 含数值计算题</div>
+        </a>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>考试范围一览 <span class="cn">Exam Scope at a Glance</span></h2>
+      <p>以下范围来自老师在 <code>final_range.docx</code> 中划出的重点。所有页码均与课件 PDF 一致。</p>
+      <table>
+        <thead>
+          <tr><th>章节 Chapter</th><th>重点页 Key Pages</th><th>核心主题 Core Topics</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Ch 1</strong></td>
+            <td>p16–17, 18, 19–21, 23–24, 25, 42–44, 62–71</td>
+            <td>Digital encoding, 4B/5B, AM/FM/PM, Nyquist, Shannon/SNR, protocol layering, topologies</td>
+          </tr>
+          <tr>
+            <td><strong>Ch 2</strong></td>
+            <td>p14, 30–31, 33</td>
+            <td>Transmission media, wireless transmission, propagation methods</td>
+          </tr>
+          <tr>
+            <td><strong>Ch 3</strong></td>
+            <td>p6–9, 11–12, 19, 30–31 &amp; 37–41, 51, 55</td>
+            <td>Framing, error detection vs correction, CRC, Hamming code, flow control, Go-Back-N</td>
+          </tr>
+          <tr>
+            <td><strong>Ch 4</strong></td>
+            <td>p28, 53–54, 73, 97, 119, 124, 136</td>
+            <td>IPv6, Dijkstra, Distance Vector, TCP, congestion control, UDP</td>
+          </tr>
+          <tr>
+            <td><strong>Ch 5</strong></td>
+            <td>全章 All chapter</td>
+            <td><strong>Code writing question</strong>: Socket programming (C/Winsock)</td>
+          </tr>
+          <tr>
+            <td><strong>Ch 6</strong></td>
+            <td>p13, 17, 35, 50–51</td>
+            <td>Min frame size, binary exponential backoff, WLAN, CSMA/CA</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="tips">
+      <h2>使用提示 <span class="cn">How to Use</span></h2>
+      <div class="exam-key">
+        <p><strong>⭐ 标记说明：</strong></p>
+        <ul>
+          <li>⭐ <strong>EXAM KEY POINT</strong> = 教师明确划的考点</li>
+          <li>⭐⭐ <strong>HIGH PRIORITY</strong> = 高频考点，几乎必考（如 Hamming、Dijkstra、TCP 握手、最小帧长）</li>
+          <li>📝 <strong>例题</strong>：点击展开看完整解题步骤</li>
+          <li>💡 <strong>中文解释</strong>：点击展开看难点的中文讲解</li>
+          <li>🎯 <strong>自测题</strong>：每章末尾，选答后立即反馈</li>
+          <li>💻 <strong>代码块</strong>：右上角"Copy"按钮一键复制</li>
+        </ul>
+      </div>
+
+      <details class="cn-note" open>
+        <summary>💡 复习建议 <span class="badge-cn">中文</span></summary>
+        <div>
+          <p><strong>推荐复习顺序：</strong></p>
+          <ol>
+            <li><strong>先过一遍知识点</strong>（每章上半部分），用"重点框"快速识别考点</li>
+            <li><strong>展开例题，自己先做一遍</strong>，再对照步骤</li>
+            <li><strong>做章末自测题</strong>，错的题回到正文重看</li>
+            <li><strong>Chapter 5 把每段 C/Winsock 代码抄一遍</strong>，理解每个函数的作用与顺序</li>
+            <li>考前一天再次浏览所有 ⭐⭐ 高频考点</li>
+          </ol>
+          <p><strong>考试技巧：</strong>全英文考试时，先看清题目关键词（calculate, derive, design, explain, compare），先按英文要求作答，必要时用图/公式辅助。</p>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>⌨️ 键盘快捷键 / 浏览器功能</summary>
+        <div>
+          <ul>
+            <li><kbd>Ctrl</kbd>+<kbd>F</kbd>：在当前页面内搜索关键词</li>
+            <li><kbd>Ctrl</kbd>+<kbd>P</kbd>：打印或导出为 PDF（CSS 已优化，例题自动展开）</li>
+            <li>右上角 🌙 / ☀️ 切换深浅色（自动记忆偏好）</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <footer>
+      <p>DCN Review · 仅供个人复习使用 · 内容以课件 PDF 原文为准</p>
+    </footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>

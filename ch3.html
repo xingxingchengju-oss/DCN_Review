@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch3 链路层 | DCN Review</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html" class="brand">📡 DCN Review</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="ch1.html">Ch1 引论</a>
+    <a href="ch2.html">Ch2 物理层</a>
+    <a href="ch3.html">Ch3 链路层</a>
+    <a href="ch4.html">Ch4 网络层</a>
+    <a href="ch5.html">Ch5 应用层</a>
+    <a href="ch6.html">Ch6 以太网与无线</a>
+  </div>
+  <button class="theme-toggle">🌙</button>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h3>本章目录</h3>
+    <ul>
+      <li><a href="#framing">1. Framing 成帧</a></li>
+      <li><a href="#error">2. Error: Detect vs Correct</a></li>
+      <li><a href="#crc">3. CRC 循环冗余校验 ⭐⭐</a></li>
+      <li><a href="#hamming">4. Hamming Code 海明码 ⭐⭐</a></li>
+      <li><a href="#flow">5. Flow Control 流控</a></li>
+      <li><a href="#gbn">6. Go-Back-N ARQ ⭐⭐</a></li>
+      <li><a href="#quiz">🎯 自测题 Quiz</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+    <h1>Chapter 3 — Data Link Layer</h1>
+    <p class="subtitle">链路层：成帧、差错控制、流量控制、ARQ 协议</p>
+
+    <!-- ============================================================
+         1. Framing
+         ============================================================ -->
+    <section id="framing">
+      <h2>1. Framing <span class="cn">成帧 (p6–9)</span></h2>
+      <p>链路层把上层下来的比特流划分为<span class="term">帧 (frame)</span>，让接收方能识别每帧的开始与结束。</p>
+
+      <h3>四种成帧方法 Four Methods</h3>
+
+      <div class="exam-key">
+        <p>四种方法及其核心思想（必背）：</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>#</th><th>方法</th><th>原理</th><th>问题</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><strong>Character Count</strong><br>字符计数</td>
+            <td>帧头加一个字段记录帧长（字符数）</td>
+            <td>该字段一旦传错，整条帧链就乱套</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>Byte Stuffing</strong><br>字节填充（带 flag bytes）</td>
+            <td>帧首尾用特殊 flag byte；数据中遇到 flag → 前面插 ESC；遇 ESC → 再插一个 ESC</td>
+            <td>仅适合面向字节的协议</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><strong>Bit Stuffing</strong><br>位填充（带 flag pattern）</td>
+            <td>帧首尾用 <code>01111110</code>；发送端遇 <strong>连续 5 个 1</strong> 就插一个 0；接收端反向去除</td>
+            <td>逐位扫描略复杂</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><strong>Physical Layer Coding Violations</strong><br>物理层编码违例</td>
+            <td>用线路上"非法"的编码模式作为分界（如 Manchester 中本不应出现的电平）</td>
+            <td>需物理层支持</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <details class="example" open>
+        <summary>例题 Bit Stuffing（最常考）</summary>
+        <div>
+          <p><strong>题：</strong>原始数据 <code>0110 11111 11111 0010</code>（空格仅为方便阅读），用位填充后发出，接收端如何还原？</p>
+          <div class="step">
+            <span class="step-label">Step 1 (Sender):</span> 扫描数据，每遇到 <strong>5 个连续 1</strong> 就插入一个 0：
+            <pre><code>原始：  0110 11111 11111 0010
+                    ↑插0    ↑插0
+发送：  0110 11111<u>0</u> 11111<u>0</u> 0010</code></pre>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2:</span> 帧首尾再加 flag <code>01111110</code>。这里 6 个 1 是 flag，绝对不会和填充后的数据混淆。
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3 (Receiver):</span> 收到数据，扫描，每遇 <strong>5 个 1 后接 1 个 0</strong>，就<strong>删除那个 0</strong>。
+          </div>
+          <div class="step">
+            <span class="step-label">Step 4:</span> 如果遇到 <strong>5 个 1 后接 110</strong>（即 0111111<strong>0</strong>），那就是 flag = 帧结束。
+          </div>
+        </div>
+      </details>
+
+      <details class="example">
+        <summary>例题 Byte Stuffing</summary>
+        <div>
+          <p>约定：FLAG = 0x7E, ESC = 0x7D。数据中含 FLAG 或 ESC 时插一个 ESC。</p>
+          <div class="step"><span class="step-label">原始数据：</span> <code>A 7E B 7D C</code></div>
+          <div class="step"><span class="step-label">填充后：</span> <code>A <u>7D</u> 7E B <u>7D</u> 7D C</code>（每个 7E 或 7D 前各加一个 ESC）</div>
+          <div class="step"><span class="step-label">发出帧：</span> <code>7E [A 7D 7E B 7D 7D C] 7E</code>（首尾 flag 包围）</div>
+          <div class="step"><span class="step-label">接收端：</span> 去掉首尾 flag → 扫描，遇 ESC 就删除并把下个字节当数据 → 还原 <code>A 7E B 7D C</code></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         2. Error Detection vs Correction
+         ============================================================ -->
+    <section id="error">
+      <h2>2. Error Control: Detection vs Correction <span class="cn">差错检测与纠正 (p11–12)</span></h2>
+
+      <h3>错误类型 Error Types</h3>
+      <table>
+        <tr><th>类型</th><th>定义</th></tr>
+        <tr><td><strong>Single-bit error</strong> 单比特错</td><td>1 个比特从 0 变 1 或从 1 变 0</td></tr>
+        <tr><td><strong>Burst error</strong> 突发错误</td><td>连续多个比特出错</td></tr>
+      </table>
+
+      <h3>Detection vs Correction</h3>
+      <div class="compare">
+        <div>
+          <h4>Error Detection 检测</h4>
+          <p>只判断"有没有错"，<strong>不告诉哪一位错</strong>。</p>
+          <ul>
+            <li>方法：奇偶校验 Parity、Checksum、<strong>CRC</strong></li>
+            <li>策略：检出后请求重传（ARQ）</li>
+            <li>开销小</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Error Correction 纠正</h4>
+          <p>不仅检出错误，还能<strong>恢复</strong>原始数据。</p>
+          <ul>
+            <li>方法：<strong>Hamming Code</strong>、Reed-Solomon、Turbo、LDPC</li>
+            <li>策略：FEC（Forward Error Correction 前向纠错）</li>
+            <li>冗余位多，开销大</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exam-key">
+        <p><strong>两种纠错思路：</strong></p>
+        <ul>
+          <li><strong>FEC (Forward Error Correction)</strong>：发送方加冗余位，接收方独立纠正错误 — <em>无需重传</em>，适合实时/单向场景（卫星、深空、广播）</li>
+          <li><strong>ARQ (Automatic Repeat reQuest)</strong>：接收方仅检测，请求重传 — 适合带宽宽、延迟低的双向链路</li>
+        </ul>
+      </div>
+
+      <details class="cn-note">
+        <summary>💡 什么时候用 FEC，什么时候用 ARQ？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p><strong>FEC 适用：</strong>单向链路（卫星深空通信，没法重传）、延迟敏感（流媒体）、广播（一对多没法每个接收方都请求重传）。</p>
+          <p><strong>ARQ 适用：</strong>双向链路、可重传、对带宽利用率敏感（不愿浪费在大量冗余位上）。如 TCP、Wi-Fi 链路层。</p>
+          <p>实际工程常常<strong>两者结合</strong>：先用 FEC 纠正大部分错误，纠正不了的再用 ARQ 重传（HARQ，4G/5G 蜂窝网）。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         3. CRC
+         ============================================================ -->
+    <section id="crc">
+      <h2>3. CRC — Cyclic Redundancy Check <span class="cn">循环冗余校验 (p19)</span></h2>
+
+      <div class="exam-key double">
+        <p>CRC 把比特串看作多项式（系数是 0 或 1），用<strong>模 2 除法</strong>计算余数作为校验码。</p>
+        <p>例：比特串 <code>1011</code> ↔ 多项式 <strong>x³ + x + 1</strong></p>
+      </div>
+
+      <h3>CRC 算法步骤</h3>
+      <p>设数据 D 为 m 位，生成多项式 G(x) 阶数为 r（对应位串长 r+1 位）：</p>
+      <ol>
+        <li><strong>左移</strong>：把 D 末尾补 r 个 0，得到 D·2<sup>r</sup>（位串长 m+r）</li>
+        <li><strong>模 2 除</strong>：用 G 去除 D·2<sup>r</sup>，得到 r 位余数 R</li>
+        <li><strong>追加</strong>：发出 T = D·2<sup>r</sup> + R（这正是能被 G 整除的码字）</li>
+        <li><strong>接收端</strong>：用同样的 G 去除收到的 T'，若余数为 0 ⇒ 无错；否则有错</li>
+      </ol>
+
+      <details class="example" open>
+        <summary>例题 CRC：数据 <code>1101011011</code>，G = <code>x⁴+x+1</code> = <code>10011</code>，求 CRC</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">Step 1.</span> 数据 D = <code>1101011011</code>（10 位），G 阶数 r = 4。
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2.</span> D 末尾补 4 个 0：<code>1101011011<u>0000</u></code>（14 位）
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3.</span> 模 2 除法（XOR，不借不进位）：
+            <pre><code>     1100001010   ← 商 (不重要)
+   ┌──────────────────
+10011│11010110110000
+       10011
+       ─────
+        10011
+        10011
+        ─────
+         00000
+         00000
+              0
+              ...
+   余数 = 1110  ← 4 位 CRC</code></pre>
+            <em>（详细列竖式自己练；考试时一步一 XOR）</em>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 4.</span> 发出 T = <code>1101011011<u>1110</u></code>（CRC = 1110 追加在数据后）
+          </div>
+          <div class="step">
+            <span class="step-label">Step 5 (校验).</span> 接收端用 G 除 T，若余数=0 ⇒ 无错。
+          </div>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 模 2 除法和普通除法的区别？<span class="badge-cn">中文</span></summary>
+        <div>
+          <p>模 2 加法/减法都退化为<strong>异或 XOR</strong>，<strong>不进位、不借位</strong>：</p>
+          <ul>
+            <li>0+0=0, 0+1=1, 1+0=1, 1+1=<strong>0</strong>（没有进位）</li>
+            <li>减法同上（1-1=0, 0-1=1）</li>
+          </ul>
+          <p>所以"模 2 除法"就是按位异或+移位的反复过程，比普通除法简单得多。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         4. Hamming Code
+         ============================================================ -->
+    <section id="hamming">
+      <h2>4. Hamming Code <span class="cn">海明码 (p30–31, 37–41)</span></h2>
+
+      <h3>核心公式与约定</h3>
+      <ul>
+        <li>码字 n 位 = m 位数据 + k 位校验位（n = m + k）</li>
+        <li>校验位数关系：<strong>2<sup>k</sup> ≥ m + k + 1</strong></li>
+        <li>校验位放在位置 <strong>1, 2, 4, 8, 16, ...</strong>（2 的幂次，位置从 1 开始计数）</li>
+        <li>数据位填在其余位置</li>
+        <li>每个校验位 p<sub>i</sub> 负责覆盖：所有位置编号的<strong>二进制表示中第 i 位为 1</strong> 的位置</li>
+      </ul>
+
+      <div class="exam-key double">
+        <p>Hamming 码可<strong>纠正 1 位错</strong>、<strong>检测 2 位错</strong>。所以叫"单错纠正"码 (SEC)。</p>
+      </div>
+
+      <h3>校验位覆盖范围</h3>
+      <table>
+        <thead>
+          <tr><th>校验位</th><th>位置</th><th>覆盖（位置二进制第 i 位为 1）</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>p<sub>1</sub></td><td>1 (001)</td><td>1, 3, 5, 7, 9, 11, 13, ...（奇数位）</td></tr>
+          <tr><td>p<sub>2</sub></td><td>2 (010)</td><td>2, 3, 6, 7, 10, 11, 14, 15, ...</td></tr>
+          <tr><td>p<sub>4</sub></td><td>4 (100)</td><td>4, 5, 6, 7, 12, 13, 14, 15, ...</td></tr>
+          <tr><td>p<sub>8</sub></td><td>8 (1000)</td><td>8, 9, 10, 11, 12, 13, 14, 15, ...</td></tr>
+        </tbody>
+      </table>
+
+      <details class="example" open>
+        <summary>例题：把 4 位数据 <code>1010</code> 编码成 7 位 Hamming 码（偶校验）</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">Step 1.</span> m=4，求 k：2<sup>k</sup> ≥ 4+k+1。k=3 时 8 ≥ 8 ✓。所以 n=4+3=7 位码字。
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2.</span> 摆位：
+            <pre><code>位置:  1   2   3   4   5   6   7
+内容: p1  p2  d1  p4  d2  d3  d4
+数据值:           1       0   1   0  ← 1010 依次填 d1,d2,d3,d4
+即:   ?   ?   1   ?   0   1   0</code></pre>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3.</span> 计算 p<sub>1</sub>（覆盖位置 1,3,5,7 = p1 ⊕ d1 ⊕ d2 ⊕ d4）。偶校验 ⇒ p1 ⊕ 1 ⊕ 0 ⊕ 0 = 0 ⇒ <strong>p<sub>1</sub> = 1</strong>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 4.</span> 计算 p<sub>2</sub>（覆盖 2,3,6,7）：p2 ⊕ d1 ⊕ d3 ⊕ d4 = 0 ⇒ p2 ⊕ 1 ⊕ 1 ⊕ 0 = 0 ⇒ <strong>p<sub>2</sub> = 0</strong>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 5.</span> 计算 p<sub>4</sub>（覆盖 4,5,6,7）：p4 ⊕ d2 ⊕ d3 ⊕ d4 = 0 ⇒ p4 ⊕ 0 ⊕ 1 ⊕ 0 = 0 ⇒ <strong>p<sub>4</sub> = 1</strong>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 6.</span> 最终 7 位码字：<code>1 0 1 <u>1</u> 0 1 0</code>（位置 1–7）
+          </div>
+        </div>
+      </details>
+
+      <details class="example">
+        <summary>纠错例题：收到 <code>1 0 1 1 0 0 0</code>（位置 1–7），找出错位</summary>
+        <div>
+          <div class="step">
+            <span class="step-label">Step 1.</span> 重新计算各校验位的"综合症 (syndrome)"：
+            <pre><code>c1 = b1 ⊕ b3 ⊕ b5 ⊕ b7 = 1⊕1⊕0⊕0 = 0  ✓
+c2 = b2 ⊕ b3 ⊕ b6 ⊕ b7 = 0⊕1⊕0⊕0 = 1  ✗
+c4 = b4 ⊕ b5 ⊕ b6 ⊕ b7 = 1⊕0⊕0⊕0 = 1  ✗</code></pre>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 2.</span> Syndrome = c4 c2 c1 = <strong>110</strong>（二进制）= <strong>6</strong>
+          </div>
+          <div class="step">
+            <span class="step-label">Step 3.</span> 位置 6 出错 → 翻转位置 6 的比特 → <code>1 0 1 1 0 <u>1</u> 0</code>，恢复正确码字。
+          </div>
+        </div>
+      </details>
+
+      <details class="cn-note">
+        <summary>💡 Hamming Distance（海明距离）与纠错能力<span class="badge-cn">中文</span></summary>
+        <div>
+          <p><strong>Hamming Distance d(x,y)</strong> = 两个等长码字中<strong>对应位不同的位数</strong>。例如 d(1011, 1101) = 2（中间两位不同）。</p>
+          <p><strong>码的最小海明距离 d<sub>min</sub></strong> = 任意两个合法码字之间最小的距离。</p>
+          <p>能力公式：
+          <ul>
+            <li>能<strong>检测</strong>所有 ≤ <code>d<sub>min</sub> − 1</code> 位错</li>
+            <li>能<strong>纠正</strong>所有 ≤ <code>⌊(d<sub>min</sub> − 1)/2⌋</code> 位错</li>
+          </ul>
+          标准 Hamming 码 d<sub>min</sub>=3 → 检 2 位错，纠 1 位错。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         5. Flow Control
+         ============================================================ -->
+    <section id="flow">
+      <h2>5. Flow Control <span class="cn">流量控制 (p51)</span></h2>
+      <p>防止发送方过快淹没接收方（接收方处理慢、缓存满）。</p>
+
+      <div class="compare">
+        <div>
+          <h4>Stop-and-Wait 停止等待</h4>
+          <p>发送方发 1 帧 → 等 ACK → 收 ACK 后再发下一帧</p>
+          <ul>
+            <li>窗口 = 1</li>
+            <li>简单可靠</li>
+            <li><strong>带宽利用率低</strong>，尤其长距离</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Sliding Window 滑动窗口</h4>
+          <p>发送方可连发 W 个帧不等 ACK；窗口随 ACK 滑动</p>
+          <ul>
+            <li>窗口 W &gt; 1</li>
+            <li>带宽利用率高</li>
+            <li>需序号字段、窗口管理</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="formula">
+        <span class="formula-label">Stop-and-Wait 效率</span>
+        U = 1 / (1 + 2a)，其中 a = t<sub>prop</sub> / t<sub>frame</sub>
+      </div>
+      <ul>
+        <li><strong>a</strong> = 传播延迟 / 帧传输时间</li>
+        <li>a 越大（线路越长 or 帧越短）→ U 越低</li>
+      </ul>
+
+      <div class="formula">
+        <span class="formula-label">Sliding Window 效率</span>
+        U = W / (1 + 2a)（W &lt; 1+2a 时）<br>
+        U = 1（W ≥ 1+2a 时，链路被填满）
+      </div>
+
+      <details class="example">
+        <summary>例题：长距离卫星链路，a=10，停等效率？滑动窗口 W=8 时效率？</summary>
+        <div>
+          <div class="step"><span class="step-label">Stop-and-Wait:</span> U = 1/(1+20) = 1/21 ≈ <strong>4.8%</strong>（极低）</div>
+          <div class="step"><span class="step-label">Sliding W=8:</span> U = 8/21 ≈ <strong>38%</strong></div>
+          <div class="step"><span class="step-label">Sliding W=21:</span> U = 21/21 = <strong>100%</strong>（窗口正好填满管道）</div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         6. Go-Back-N
+         ============================================================ -->
+    <section id="gbn">
+      <h2>6. Go-Back-N ARQ <span class="cn">回退 N 协议 (p55)</span></h2>
+
+      <div class="exam-key double">
+        <p>Go-Back-N 的核心：发送窗口 W &gt; 1，接收窗口 = 1。<br>
+        丢/错一帧后，发送方<strong>从该帧开始全部重传</strong>（回退 N 帧）。</p>
+      </div>
+
+      <h3>工作流程</h3>
+      <ol>
+        <li>发送方维护：<code>S<sub>f</sub></code>（窗口起点）、<code>S<sub>n</sub></code>（下一个要发的序号）</li>
+        <li>可连发 <code>S<sub>f</sub></code> 到 <code>S<sub>f</sub> + W − 1</code> 之间的帧不等 ACK</li>
+        <li>接收方使用<strong>累积 ACK</strong>：ACK <em>n</em> 表示"我已正确收到 n−1 及之前所有帧，期待第 n 帧"</li>
+        <li>接收方<strong>只接受按序帧</strong>，乱序帧直接丢弃</li>
+        <li>发送方<strong>超时</strong> → 把窗口内所有未确认帧<strong>全部重发</strong></li>
+      </ol>
+
+      <h3>时序图示意 Timeline</h3>
+      <svg class="diagram" viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg">
+        <text x="20" y="20" font-weight="bold">Sender</text>
+        <text x="540" y="20" font-weight="bold">Receiver</text>
+        <line class="axis" x1="80" y1="30" x2="80" y2="270"/>
+        <line class="axis" x1="520" y1="30" x2="520" y2="270"/>
+        <!-- frame 0 -->
+        <line x1="80" y1="40" x2="520" y2="55" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="280" y="48" font-size="11">F0</text>
+        <line x1="520" y1="65" x2="80" y2="80" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="280" y="78" font-size="11" fill="#16a34a">ACK1</text>
+        <!-- frame 1 -->
+        <line x1="80" y1="90" x2="520" y2="105" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="280" y="98" font-size="11">F1</text>
+        <!-- frame 2 LOST -->
+        <line x1="80" y1="115" x2="300" y2="125" stroke="#ef4444" stroke-width="1.5"/>
+        <text x="180" y="118" font-size="11">F2</text>
+        <text x="305" y="128" font-size="13" fill="#ef4444">✗ LOST</text>
+        <!-- frame 3,4 discarded -->
+        <line x1="80" y1="140" x2="520" y2="155" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <text x="280" y="148" font-size="11">F3 (discarded)</text>
+        <line x1="80" y1="165" x2="520" y2="180" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <text x="280" y="172" font-size="11">F4 (discarded)</text>
+        <!-- timeout -->
+        <text x="20" y="205" font-size="11" fill="#dc2626" font-weight="bold">⏱ Timeout</text>
+        <line x1="80" y1="200" x2="160" y2="200" stroke="#dc2626" stroke-dasharray="4,3"/>
+        <!-- retransmit F2, F3, F4 -->
+        <line x1="80" y1="215" x2="520" y2="230" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="280" y="222" font-size="11" fill="#c2410c">F2 (retransmit)</text>
+        <line x1="80" y1="240" x2="520" y2="255" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="280" y="247" font-size="11" fill="#c2410c">F3 (retransmit)</text>
+      </svg>
+
+      <h3>序号空间限制 Sequence Number Constraint</h3>
+      <div class="formula">
+        用 m 位序号：窗口大小 W ≤ 2<sup>m</sup> − 1
+      </div>
+      <p>例：3 位序号 (0–7) → W ≤ 7。这是为了避免重传帧的序号与新帧重叠造成歧义。</p>
+
+      <details class="cn-note">
+        <summary>💡 Go-Back-N vs Selective Repeat<span class="badge-cn">中文</span></summary>
+        <div>
+          <table>
+            <tr><th></th><th>Go-Back-N</th><th>Selective Repeat</th></tr>
+            <tr><td>发送窗口</td><td>&gt; 1</td><td>&gt; 1</td></tr>
+            <tr><td>接收窗口</td><td><strong>= 1</strong></td><td><strong>&gt; 1</strong></td></tr>
+            <tr><td>错/丢一帧后</td><td>重传该帧及之后所有</td><td>只重传该帧</td></tr>
+            <tr><td>ACK 方式</td><td>累积 ACK</td><td>独立 ACK</td></tr>
+            <tr><td>接收方缓存</td><td>不缓存乱序帧</td><td>缓存乱序帧</td></tr>
+            <tr><td>带宽效率</td><td>差（错一帧重传多帧）</td><td>高</td></tr>
+            <tr><td>实现复杂度</td><td>简单</td><td>复杂（需排序缓存）</td></tr>
+          </table>
+          <p>SR 用窗口大小限制 W ≤ 2<sup>m−1</sup>（一半序号空间）。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         Quiz
+         ============================================================ -->
+    <section id="quiz" class="quiz-section">
+      <h2>🎯 Self-Test <span class="cn">章末自测 (8 题)</span></h2>
+
+      <div class="quiz-q" data-type="blank" data-answer="01111100111110010011">
+        <p class="q-stem"><span class="q-num">Q1.</span> 用位填充法发送原始数据 <code>011111011111010011</code>（18 位），填充后比特串是什么？（不含首尾 flag）</p>
+        <div class="q-blank"><input type="text" placeholder="填充后 20 位"></div>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <p class="q-feedback" style="display:none"></p>
+        <div class="q-explain" style="display:none">
+          原始：<code>0 11111 0 11111 010011</code>（空格仅为标出 5 连 1 的位置）<br>
+          扫描遇 5 个连 1 → 后面插一个 0：<br>
+          <code>0 11111 <u>0</u> 0 11111 <u>0</u> 010011</code><br>
+          去空格答：<strong><code>01111100111110010011</code></strong>（20 位）
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q2.</span> CRC 中使用的运算是？</p>
+        <ul class="q-options">
+          <li>A. 普通二进制加减乘除</li>
+          <li>B. 模 2 算术（XOR，不进位）</li>
+          <li>C. 模 10 算术</li>
+          <li>D. 浮点运算</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>B.</strong> CRC 用模 2 多项式除法，加减都是 XOR，无进位无借位。</div>
+      </div>
+
+      <div class="quiz-q" data-type="blank" data-answer="3|three">
+        <p class="q-stem"><span class="q-num">Q3.</span> 用 Hamming 码保护 4 位数据，至少需要多少个校验位？</p>
+        <div class="q-blank">k = <input type="text" placeholder="数字"></div>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <p class="q-feedback" style="display:none"></p>
+        <div class="q-explain" style="display:none">
+          要满足 2<sup>k</sup> ≥ m + k + 1 = 4 + k + 1 = k + 5。<br>
+          k=2: 4 ≥ 7 ✗；k=3: 8 ≥ 8 ✓。所以 <strong>k = 3</strong>。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q4.</span> 标准 Hamming 码（d<sub>min</sub>=3）能：</p>
+        <ul class="q-options">
+          <li>A. 纠 2 位错、检 3 位错</li>
+          <li>B. 纠 1 位错、检 1 位错</li>
+          <li>C. 纠 1 位错、检 2 位错</li>
+          <li>D. 纠 2 位错、检 4 位错</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none"><strong>C.</strong> d<sub>min</sub>=3 ⇒ 纠 ⌊(3-1)/2⌋=1 位错；检 d-1=2 位错。</div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="0">
+        <p class="q-stem"><span class="q-num">Q5.</span> Hamming 码中 p<sub>2</sub> 覆盖哪些位置？</p>
+        <ul class="q-options">
+          <li>A. 2, 3, 6, 7, 10, 11, ...</li>
+          <li>B. 1, 3, 5, 7, 9, ...</li>
+          <li>C. 4, 5, 6, 7, 12, ...</li>
+          <li>D. 8, 9, 10, ...</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>A.</strong> p<sub>2</sub> 在位置 2 (binary 010)，覆盖所有"位置二进制的第 2 位 (2¹) 为 1"的位置，即 010, 011, 110, 111, 1010, 1011, … = 2, 3, 6, 7, 10, 11, 14, 15, …
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="2">
+        <p class="q-stem"><span class="q-num">Q6.</span> 在长延迟卫星链路 (a=10) 上，比较 Stop-and-Wait 和 Sliding Window (W=5) 的效率：</p>
+        <ul class="q-options">
+          <li>A. 二者相同</li>
+          <li>B. Stop-and-Wait 更高</li>
+          <li>C. Sliding Window 高约 5 倍</li>
+          <li>D. Sliding Window 低</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>C.</strong> Stop-and-Wait: 1/(1+20) ≈ 4.8%；W=5 Sliding: 5/21 ≈ 23.8%。后者约 5 倍。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="1">
+        <p class="q-stem"><span class="q-num">Q7.</span> Go-Back-N 中，发送方收到 ACK 5 表示什么？</p>
+        <ul class="q-options">
+          <li>A. 第 5 帧丢失</li>
+          <li>B. 帧 0–4 都正确收到，期待第 5 帧</li>
+          <li>C. 接收方缓存里有第 5 帧</li>
+          <li>D. 重传第 5 帧</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>B.</strong> GBN 用累积 ACK：ACK n 意为"我已经按序收到 n−1 及之前所有帧，下一个期待 n"。
+        </div>
+      </div>
+
+      <div class="quiz-q" data-type="mc" data-answer="0">
+        <p class="q-stem"><span class="q-num">Q8.</span> GBN 中若 F2 丢失而 F3、F4 已发出，接收方对 F3、F4 怎么处理？</p>
+        <ul class="q-options">
+          <li>A. 丢弃，不缓存</li>
+          <li>B. 缓存待 F2 到达再排序</li>
+          <li>C. 立即返回各自的 ACK</li>
+          <li>D. 转交上层</li>
+        </ul>
+        <div class="q-actions"><button class="btn-submit">Submit</button><button class="btn-explain secondary">解析</button></div>
+        <div class="q-explain" style="display:none">
+          <strong>A.</strong> GBN 接收窗口=1，乱序帧一律丢弃。发送方超时后会从 F2 开始重传整段。这正是 GBN 比 SR 浪费带宽的原因。
+        </div>
+      </div>
+    </section>
+
+    <footer><a href="ch2.html">← Ch2</a> · Chapter 3 完 · <a href="ch4.html">Ch4 网络层 →</a></footer>
+  </main>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>
